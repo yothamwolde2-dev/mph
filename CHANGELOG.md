@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.2, 16 October 2026
+
+* Much faster: the app opens from the copy kept on the device and updates itself in the background.
+* Documents download once and then open instantly from the device.
+* Screen redraws are combined, the page fade plays only when you change page, and saving status no longer redraws the screen.
+* Saving to the device happens in the background so taps never wait.
+
 ## 0.1.1, 16 October 2026
 
 * New reader tools: resume where you left off, bookmarks with notes, highlights with notes, contents, search inside the document, text size, reading progress on every tile, focus mode.

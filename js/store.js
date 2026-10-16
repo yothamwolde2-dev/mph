@@ -1,11 +1,11 @@
 // MPH store: login, workspace state, undo and redo, saving and syncing with Supabase.
-import { uid, clone, DEFAULT_STATUSES, mkNode } from './core.js?v=0.1.1';
+import { uid, clone, DEFAULT_STATUSES, mkNode } from './core.js?v=0.1.2';
 
 export const CONFIG = {
   url: 'https://ibudcfsqsxjgxmngwrhk.supabase.co',
   key: 'sb_publishable_26qRWYPGawMiYPUPBsI1NA_HS2MuWOv',
   bucket: 'mph-files',
-  version: '0.1.1'
+  version: '0.1.2'
 };
 
 export const sb = window.supabase.createClient(CONFIG.url, CONFIG.key, {
@@ -66,12 +66,20 @@ export const onChange = fn => listeners.add(fn);
 export const emit = () => listeners.forEach(fn => fn());
 
 const LKEY = () => 'mph:' + (store.user ? store.user.id : 'anon');
-function saveLocal() {
-  try {
-    localStorage.setItem(LKEY() + ':state', JSON.stringify({ state: store.state, rev: store.rev, dirty: store.dirty || false }));
-    localStorage.setItem(LKEY() + ':hist', JSON.stringify({ past: store.past.slice(-25), future: store.future.slice(-25) }));
-  } catch (e) { /* storage full or blocked: history just stays in memory */ }
+// Saving to the device is spread out so typing and tapping never wait on it.
+let stateTimer = null, histTimer = null;
+function writeState() { try { localStorage.setItem(LKEY() + ':state', JSON.stringify({ state: store.state, rev: store.rev, dirty: store.dirty || false })); } catch (e) {} }
+function writeHist() { try { localStorage.setItem(LKEY() + ':hist', JSON.stringify({ past: store.past.slice(-25), future: store.future.slice(-25) })); } catch (e) {} }
+function saveLocal(withHist = false) {
+  clearTimeout(stateTimer); stateTimer = setTimeout(writeState, 150);
+  if (withHist) { clearTimeout(histTimer); histTimer = setTimeout(writeHist, 2500); }
 }
+function flushLocal() { clearTimeout(stateTimer); clearTimeout(histTimer); if (store.user) { writeState(); writeHist(); } }
+window.addEventListener('pagehide', flushLocal);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushLocal(); });
+
+// Sync status changes only touch the small indicator, never the whole screen.
+function setSync(v) { if (store.sync === v) return; store.sync = v; window.dispatchEvent(new CustomEvent('mph:sync')); }
 function loadLocal() {
   try {
     const s = JSON.parse(localStorage.getItem(LKEY() + ':state') || 'null');
@@ -109,7 +117,7 @@ export function redo() {
 export function touch(fn) { fn(store.state); store.dirty = true; saveLocal(); schedulePush(); }
 function afterChange() {
   store.dirty = true;
-  saveLocal();
+  saveLocal(true);
   schedulePush();
   emit();
 }
@@ -121,7 +129,7 @@ let pushing = false;
 export async function push() {
   if (!store.user || pushing) return;
   if (!store.dirty) return;
-  pushing = true; store.sync = 'saving'; emit();
+  pushing = true; setSync('saving');
   try {
     const { data, error } = await sb.from('mph_state')
       .update({ data: store.state, rev: store.rev + 1, updated_at: new Date().toISOString() })
@@ -134,25 +142,25 @@ export async function push() {
       await pull(true);
       if (JSON.stringify(store.state) !== before) window.dispatchEvent(new CustomEvent('mph:toast', { detail: { text: 'Updated with changes from your other device' } }));
     } else {
-      store.rev = data[0].rev; store.dirty = false; store.sync = 'idle'; saveLocal();
+      store.rev = data[0].rev; store.dirty = false; setSync('idle'); saveLocal();
     }
   } catch (e) {
-    store.sync = navigator.onLine ? 'error' : 'offline';
-  } finally { pushing = false; emit(); if (store.dirty && store.sync === 'idle') schedulePush(); }
+    setSync(navigator.onLine ? 'error' : 'offline');
+  } finally { pushing = false; if (store.dirty && store.sync === 'idle') schedulePush(); }
 }
 
 export async function pull(force = false) {
   if (!store.user) return;
   const { data, error } = await sb.from('mph_state').select('data,rev').eq('user_id', store.user.id).maybeSingle();
-  if (error) { store.sync = navigator.onLine ? 'error' : 'offline'; emit(); return; }
+  if (error) { setSync(navigator.onLine ? 'error' : 'offline'); return; }
   if (!data) {
     // First time on this account: create the workspace.
     const first = store.dirty ? store.state : blankState();
     const ins = await sb.from('mph_state').insert({ user_id: store.user.id, data: first, rev: 1 }).select('rev').single();
-    if (!ins.error) { store.state = normalize(first); store.rev = 1; store.dirty = false; store.sync = 'idle'; saveLocal(); emit(); }
+    if (!ins.error) { store.state = normalize(first); store.rev = 1; store.dirty = false; setSync('idle'); saveLocal(); emit(); }
     return 'created';
   }
-  const was = store.sync; let changed = false;
+  let changed = false;
   if (force || data.rev > store.rev) {
     changed = true;
     if (store.dirty && !force && JSON.stringify(normalize(data.data)) !== JSON.stringify(store.state)) {
@@ -163,8 +171,7 @@ export async function pull(force = false) {
   } else if (data.rev < store.rev) {
     store.rev = data.rev; store.dirty = true;
   }
-  store.sync = 'idle'; saveLocal();
-  if (changed || was !== 'idle') emit();
+  setSync('idle'); if (changed) { saveLocal(); emit(); }
   if (store.dirty) schedulePush();
 }
 
@@ -224,16 +231,24 @@ export async function uploadDoc(file, meta) {
   const body = await file.arrayBuffer();
   const { error } = await sb.storage.from(CONFIG.bucket).upload(path, body, { contentType: 'text/html;charset=utf-8', upsert: true });
   if (error) throw error;
-  return { id, path, title: meta.title, section: meta.section, col: meta.col, size: file.size, added: Date.now(), opened: 0 };
+  const made = { id, path, title: meta.title, section: meta.section, col: meta.col, size: file.size, added: Date.now(), opened: 0 };
+  try { await rememberDoc(made, new TextDecoder().decode(body)); } catch (e) {}
+  return made;
 }
+// Uploaded documents never change, so each one is downloaded once and kept on the device.
+const DOC_CACHE = 'mph-docs-v1';
+const docKey = doc => new Request(location.origin + '/__mph_doc/' + doc.id);
 export async function readDoc(doc) {
   if (fileCache.has(doc.id)) return fileCache.get(doc.id);
+  try { if (window.caches) { const hit = await (await caches.open(DOC_CACHE)).match(docKey(doc)); if (hit) { const t = await hit.text(); fileCache.set(doc.id, t); return t; } } } catch (e) {}
   const { data, error } = await sb.storage.from(CONFIG.bucket).download(doc.path);
   if (error) throw error;
   const text = await data.text();
   fileCache.set(doc.id, text);
+  try { if (window.caches) (await caches.open(DOC_CACHE)).put(docKey(doc), new Response(text, { headers: { 'content-type': 'text/plain;charset=utf-8' } })); } catch (e) {}
   return text;
 }
+export async function rememberDoc(doc, text) { fileCache.set(doc.id, text); try { if (window.caches) (await caches.open(DOC_CACHE)).put(docKey(doc), new Response(text, { headers: { 'content-type': 'text/plain;charset=utf-8' } })); } catch (e) {} }
 export async function readDocState(id) {
   const { data } = await sb.from('mph_doc_state').select('data').eq('doc_id', id).maybeSingle();
   return (data && data.data) || {};

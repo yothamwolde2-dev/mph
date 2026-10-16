@@ -1,6 +1,6 @@
 // MPH views. Each returns markup; app.js wires the actions.
-import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.1.1';
-import { store, WIDGETS, CONFIG } from './store.js?v=0.1.1';
+import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.1.2';
+import { store, WIDGETS, CONFIG } from './store.js?v=0.1.2';
 
 export const NAV = [
   { group: 'Work', items: [
@@ -332,10 +332,13 @@ export function login(mode, msg, err) {
     </form></div>`;
 }
 
+export function syncLabel() {
+  const v = store.sync;
+  return { cls: v === 'saving' ? 'saving' : (v === 'offline' || v === 'error') ? 'off' : '', txt: v === 'saving' ? 'Saving' : v === 'offline' ? 'Offline, saved on this device' : v === 'error' ? 'Not synced, will retry' : 'Synced' };
+}
 export function shell(route, inner) {
   const st = S(); const r = route.split('/')[0];
-  const syncCls = store.sync === 'saving' ? 'saving' : (store.sync === 'offline' || store.sync === 'error') ? 'off' : '';
-  const syncTxt = store.sync === 'saving' ? 'Saving' : store.sync === 'offline' ? 'Offline, saved on this device' : store.sync === 'error' ? 'Not synced, will retry' : 'Synced';
+  const { cls: syncCls, txt: syncTxt } = syncLabel();
   const counts = { tasks: agenda().filter(a => !a.done && a.d && a.d <= today()).length, learning: st.docs.filter(d => d.section === 'learning').length, library: st.docs.filter(d => d.section === 'library').length };
   return `<div class="shell">
     <aside class="side"><div class="brand"><b>MPH</b><i></i></div>

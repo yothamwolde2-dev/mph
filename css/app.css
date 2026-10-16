@@ -62,14 +62,15 @@ a{color:inherit;text-decoration:none}
 @keyframes pulse{50%{opacity:.25}}
 
 .main{flex:1;min-width:0;margin-left:var(--side);display:flex;flex-direction:column}
-.topbar{position:sticky;top:0;z-index:15;display:flex;align-items:center;gap:10px;padding:14px var(--pad);background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px)}
+.topbar{position:sticky;top:0;z-index:15;display:flex;align-items:center;gap:10px;padding:14px var(--pad);background:var(--bg)}
 .topbar .crumb{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3)}
 .topbar .sp{flex:1}
 .mbrand{display:none}
 .iconbtn{width:36px;height:36px;border-radius:var(--radius);display:inline-flex;align-items:center;justify-content:center;background:var(--control);color:var(--ink);transition:background .15s,opacity .15s}
 .iconbtn:hover{background:var(--control-h)}
 .iconbtn[disabled]{opacity:.32;cursor:default}
-.view{padding:6px var(--pad) 90px;max-width:1320px;width:100%;animation:enter .45s var(--ease)}
+.view{padding:6px var(--pad) 90px;max-width:1320px;width:100%}
+.view.enter{animation:enter .28s var(--ease)}
 @keyframes enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
 .tabs{display:none}
@@ -121,12 +122,12 @@ select.field{appearance:none;-webkit-appearance:none;padding-right:34px;backgrou
 .fig b{display:block;font-family:var(--display);font-weight:800;font-size:clamp(30px,3.6vw,46px);line-height:1}
 .fig span{display:block;margin-top:8px;font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.55)}
 .quick{display:flex;gap:8px;width:min(420px,100%)}
-.quick input{flex:1;height:44px;border-radius:var(--radius);border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.35);color:#fff;padding:0 16px;outline:none;backdrop-filter:blur(6px)}
+.quick input{flex:1;height:44px;border-radius:var(--radius);border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.35);color:#fff;padding:0 16px;outline:none;}
 .quick input::placeholder{color:rgba(255,255,255,.5)}
 .quick input:focus{border-color:rgba(255,255,255,.6)}
 .quick .btn{height:44px;background:#fff;color:#000}
 .hero .corner{position:absolute;top:clamp(22px,3vw,34px);right:clamp(22px,3vw,34px);display:flex;gap:8px}
-.hero .corner .btn{background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(6px)}
+.hero .corner .btn{background:rgba(255,255,255,.1);color:#fff;}
 .hero .corner .btn:hover{background:rgba(255,255,255,.2)}
 
 .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px;margin-top:14px}

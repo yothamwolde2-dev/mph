@@ -1,8 +1,8 @@
 // MPH app: routing, rendering, actions, upload and the HTML reader.
-import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.1.1';
-import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG } from './store.js?v=0.1.1';
-import * as V from './views.js?v=0.1.1';
-import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.1.1';
+import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.1.2';
+import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG } from './store.js?v=0.1.2';
+import * as V from './views.js?v=0.1.2';
+import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.1.2';
 
 const $app = document.getElementById('app');
 const $layer = document.getElementById('layer');
@@ -15,6 +15,7 @@ const ui = {
 function load(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } }
 function keep(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 
+let lastRoute = null;
 const route = () => (location.hash.replace(/^#\/?/, '') || 'home');
 
 // RENDER
@@ -31,6 +32,7 @@ function render() {
   const a = document.activeElement; const fk = a && a.dataset ? a.dataset.k : null;
   const sy = window.scrollY;
   $app.innerHTML = V.shell(r, inner2);
+  if (r !== lastRoute) { const v = document.getElementById('view'); if (v) v.classList.add('enter'); lastRoute = r; }
   window.scrollTo(0, sy);
   renderLayer();
   const want = ui.wantFocus || fk;
@@ -49,7 +51,10 @@ function renderLayer() {
   if (ui.modal && hadModal) { const els = [...$layer.querySelectorAll('[data-m]')]; if (els.length === kept.length) els.forEach((el, i) => { el.value = kept[i]; }); syncNewCol(); }
   if (ui.drawer) { const t = $layer.querySelector('textarea.big'); if (t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; } }
 }
-onChange(render);
+// Many changes in a row produce one redraw, on the next frame.
+let rq = 0; const queueRender = () => { if (!rq) rq = requestAnimationFrame(() => { rq = 0; render(); }); };
+onChange(queueRender);
+window.addEventListener('mph:sync', () => { const el = document.querySelector('.sync'); if (!el) return; const l = V.syncLabel(); el.className = 'sync ' + l.cls; el.innerHTML = '<i></i>' + l.txt; });
 window.addEventListener('hashchange', () => { ui.menu = null; ui.drawer = null; render(); window.scrollTo(0, 0); });
 
 // INSTALL: show how to turn MPH into an app until it runs as one
@@ -58,7 +63,8 @@ function installBanner() {
   if (standalone() || load('mph:installHidden', false)) return '';
   const ua = navigator.userAgent; const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const safari = /Safari/.test(ua) && !/Chrome|CriOS|Edg/.test(ua);
-  const how = ios ? 'In Safari, tap the Share button, then Add to Home Screen. Open MPH from its new icon and sign in once.'
+  const android = /Android/.test(ua);
+  const how = android ? 'In Chrome, tap the menu (the three dots), then Install app or Add to Home screen. Open MPH from its new icon.' : ios ? 'In Safari, tap the Share button, then Add to Home Screen. Open MPH from its new icon and sign in once.'
     : safari ? 'In Safari, open the File menu and choose Add to Dock. Open MPH from the Dock and sign in once.'
     : 'Click the install icon at the right end of the address bar, or open the browser menu and choose Install MPH.';
   return `<section class="install"><div><span class="eyebrow">Make it an app</span><p>${how}</p></div><button class="btn sm" data-act="hideInstall">Got it</button></section>`;
@@ -330,4 +336,4 @@ sb.auth.onAuthStateChange((ev, session) => {
   const { data } = await sb.auth.getSession();
   if (data.session) await startSession(data.session.user); else render();
 })();
-if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
