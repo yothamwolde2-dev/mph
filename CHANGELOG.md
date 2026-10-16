@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3, 16 October 2026
+
+* Reader: the document area is pinned to the full space, fixing the black screen in Safari.
+* Reader: reading progress follows one scroll area, so the percentage no longer jumps.
+* Works offline: the app opens with your saved login, every document downloads in the background after sign in, document progress is kept on the device and synced when the connection returns.
+
 ## 0.1.2, 16 October 2026
 
 * Much faster: the app opens from the copy kept on the device and updates itself in the background.

@@ -1,9 +1,9 @@
 // MPH reader: opens an uploaded HTML document in a sandbox and adds reading tools around it.
 // Resume position, bookmarks, highlights with notes, contents, search, text size, progress, focus mode.
 // The document talks to MPH only through postMessage, so it can never reach your login or data.
-import { esc, icon, uid } from './core.js?v=0.1.2';
-import { store, mutate, touch, readDoc, readDocState, saveDocState } from './store.js?v=0.1.2';
-import { colName } from './views.js?v=0.1.2';
+import { esc, icon, uid } from './core.js?v=0.1.3';
+import { store, mutate, touch, readDoc, readDocState, saveDocState } from './store.js?v=0.1.3';
+import { colName } from './views.js?v=0.1.3';
 
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
 const keep = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
@@ -30,7 +30,9 @@ var P=parent,last=null,T,ST,user=false,found=[],cur=-1,fq=null,hls=[];
 var HL=!!(window.CSS&&CSS.highlights&&window.Highlight);
 function post(m){try{P.postMessage(m,'*')}catch(e){}}
 function root(){return document.scrollingElement||document.documentElement}
-function sc(){return last&&last.isConnected?last:root()}
+function scrollable(e){if(!e||e===document.body)return false;if(e===root())return e.scrollHeight-e.clientHeight>40;var o=getComputedStyle(e).overflowY;return(o==='auto'||o==='scroll'||o==='overlay')&&e.scrollHeight-e.clientHeight>40&&e.clientHeight>innerHeight*0.4}
+function pick(){var best=null,area=0;if(scrollable(root())){best=root();area=innerWidth*innerHeight}var all=document.body?document.body.getElementsByTagName('*'):[];for(var i=0;i<all.length&&i<6000;i++){var e=all[i];if(e.scrollHeight-e.clientHeight<=40)continue;if(!scrollable(e))continue;var a=e.clientWidth*e.clientHeight;if(a>area*1.05){best=e;area=a}}return best||root()}
+function sc(){if(!last||!last.isConnected||!scrollable(last))last=pick();return last}
 function isRoot(s){return s===root()||s===document.documentElement||s===document.body}
 function pathOf(el){var p=[];while(el&&el!==document.body&&el.parentElement){p.unshift([].indexOf.call(el.parentElement.children,el));el=el.parentElement}return el===document.body?p:null}
 function elOf(p){if(!p)return root();var el=document.body;for(var i=0;i<p.length;i++){if(!el||!el.children[p[i]])return null;el=el.children[p[i]]}return el}
@@ -45,18 +47,18 @@ function paintHl(){if(!HL)return;var rs=[];hls.forEach(function(t){var r=ranges(
 function find(q,dir){if(q!==fq){found=ranges(q,800);cur=-1;fq=q}if(!q||!found.length){if(HL){CSS.highlights.delete('mph-find');CSS.highlights.delete('mph-cur')}post({mph:'find',count:0,index:0});return}cur=(cur+(dir||1)+found.length)%found.length;if(HL){CSS.highlights.set('mph-find',new Highlight(...found));CSS.highlights.set('mph-cur',new Highlight(found[cur]))}reveal(found[cur]);post({mph:'find',count:found.length,index:cur+1})}
 function go(path,top,text){var el=elOf(path);if(el){el.scrollTo({top:top||0});if(isRoot(el)){window.scrollTo(0,top||0)}}if(text){var r=ranges(text,1)[0];if(r)reveal(r)}}
 function style(){var s=document.createElement('style');s.textContent='::highlight(mph-find){background-color:rgba(57,180,74,.35)}::highlight(mph-cur){background-color:#39B44A;color:#000}::highlight(mph-hl){background-color:rgba(255,210,0,.42)}';(document.head||document.documentElement).appendChild(s)}
-document.addEventListener('scroll',function(e){var t=e.target===document?root():e.target;if(t&&t.scrollHeight-t.clientHeight>120)last=t;user=true;clearTimeout(T);T=setTimeout(function(){var w=where();w.mph='pos';post(w)},300)},true);
+document.addEventListener('scroll',function(e){var t=e.target===document?root():e.target;var s=sc();if(t!==s){if(scrollable(t)&&t.clientWidth*t.clientHeight>s.clientWidth*s.clientHeight*1.05){last=t}else return}user=true;clearTimeout(T);T=setTimeout(function(){var w=where();w.mph='pos';post(w)},400)},true);
 document.addEventListener('selectionchange',function(){clearTimeout(ST);ST=setTimeout(function(){var s=getSelection(),t=s?String(s).trim():'';var w=where();w.mph='sel';w.text=t.slice(0,600);post(w)},250)});
 window.addEventListener('message',function(e){if(e.source!==P)return;var m=e.data;if(!m||!m.mphcmd)return;
 if(m.cmd==='goto'){go(m.path,m.top,m.text)}
-else if(m.cmd==='resume'){if(!user){go(m.path,m.top);setTimeout(function(){if(!user)go(m.path,m.top)},900)}}
+else if(m.cmd==='resume'){var tryGo=function(){if(user)return;var el=m.path?elOf(m.path):sc();if(el&&el.scrollHeight-el.clientHeight>=m.top){el.scrollTo({top:m.top});if(isRoot(el))window.scrollTo(0,m.top)}};setTimeout(tryGo,150);setTimeout(tryGo,1000)}
 else if(m.cmd==='toc'){var h=heads()[m.i];if(h)h.scrollIntoView({block:'start'})}
 else if(m.cmd==='find'){find(m.q,m.dir)}
 else if(m.cmd==='zoom'){document.documentElement.style.zoom=m.z}
 else if(m.cmd==='mark'){var w=where();w.mph='here';w.label=label();post(w)}
 else if(m.cmd==='hl'){hls=m.list||[];paintHl()}
 else if(m.cmd==='clearSel'){var s=getSelection();if(s)s.removeAllRanges()}});
-function ready(){style();post({mph:'ready',toc:toc(),pct:where().pct});setTimeout(function(){post({mph:'toc',toc:toc()});paintHl()},1500)}
+function ready(){style();last=pick();post({mph:'ready',toc:toc(),pct:where().pct});setTimeout(function(){post({mph:'toc',toc:toc()});paintHl()},1500)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready);else ready();
 })();`;
   return `<script>${storage}\n${bridge}<\/script>`;
@@ -78,7 +80,7 @@ window.addEventListener('message', e => {
     R.toc = m.toc || []; R.pct = d.pos ? d.pos.pct : 0;
     send({ cmd: 'zoom', z: d.zoom || 1 });
     send({ cmd: 'hl', list: marksOf(d).filter(x => x.kind === 'hl').map(x => x.text) });
-    if (d.pos && (d.pos.top || d.pos.pct)) { send({ cmd: 'resume', path: d.pos.path, top: d.pos.top }); if (d.pos.pct > 2) toast('Resumed where you left off'); }
+    if (d.pos && d.pos.top > 40) { send({ cmd: 'resume', path: d.pos.path, top: d.pos.top }); if (d.pos.pct > 2) toast('Resumed where you left off'); }
     refresh();
   }
   else if (m.mph === 'toc') { R.toc = m.toc || []; if (R.panel === 'toc') refresh(); }
@@ -144,7 +146,7 @@ export function refresh() {
   el.querySelector('header').innerHTML = header(d);
   const fb = el.querySelector('.rfind'); fb.hidden = !R.find;
   if (R.find && !fb.querySelector('#rq')) { fb.innerHTML = findbar(); }
-  const p = el.querySelector('.rpanel'); p.hidden = !R.panel;
+  const p = el.querySelector('.rpanel'); p.hidden = !R.panel; el.classList.toggle('with-panel', !!R.panel);
   if (R.panel) { const a = document.activeElement; const keepFocus = a && p.contains(a) ? a.dataset.m : null; p.innerHTML = panel(d); if (keepFocus) { const i = p.querySelector(`input[data-m="${keepFocus}"]`); if (i) i.focus(); } }
   el.querySelector('.rprog i').style.width = R.pct + '%';
 }
@@ -160,7 +162,7 @@ export async function mountReader(id, shellHtml, app) {
   if (!d) return;
   touch(s => { const x = s.docs.find(x => x.id === id); if (x) x.opened = Date.now(); });
   try {
-    const [html, st] = await Promise.all([readDoc(d), readDocState(id)]);
+    const [html, st] = await Promise.all([readDoc(d), readDocState(id).catch(() => ({}))]);
     if (R.id !== id) return;
     const f = document.createElement('iframe');
     f.setAttribute('sandbox', 'allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads');

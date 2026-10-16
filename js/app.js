@@ -1,8 +1,8 @@
 // MPH app: routing, rendering, actions, upload and the HTML reader.
-import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.1.2';
-import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG } from './store.js?v=0.1.2';
-import * as V from './views.js?v=0.1.2';
-import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.1.2';
+import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.1.3';
+import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG } from './store.js?v=0.1.3';
+import * as V from './views.js?v=0.1.3';
+import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.1.3';
 
 const $app = document.getElementById('app');
 const $layer = document.getElementById('layer');
@@ -330,10 +330,15 @@ document.addEventListener('submit', async e => {
 // BOOT
 sb.auth.onAuthStateChange((ev, session) => {
   if (session && session.user && (!store.user || store.user.id !== session.user.id)) { ui.authMsg = ''; startSession(session.user); }
-  if (ev === 'SIGNED_OUT') { endSession(); render(); }
+  if (ev === 'SIGNED_OUT' && navigator.onLine) { endSession(); render(); }
 });
 (async () => {
-  const { data } = await sb.auth.getSession();
-  if (data.session) await startSession(data.session.user); else render();
+  // Offline, the saved login is used so MPH still opens with everything on the device.
+  const saved = (() => { try { const v = JSON.parse(localStorage.getItem('mph-auth') || 'null'); return v && (v.user || (v.currentSession && v.currentSession.user)); } catch (e) { return null; } })();
+  let session = null;
+  try { const { data } = await sb.auth.getSession(); session = data.session; } catch (e) {}
+  if (session) await startSession(session.user);
+  else if (saved && !navigator.onLine) await startSession(saved);
+  else render();
 })();
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});

@@ -255,7 +255,7 @@ select.field{appearance:none;-webkit-appearance:none;padding-right:34px;backgrou
 .reader header .rt{flex:1;min-width:0}
 .reader header .rt b{display:block;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .reader header .rt small{display:block;font-size:10.5px;color:rgba(255,255,255,.5);letter-spacing:.14em;text-transform:uppercase}
-.reader iframe{flex:1;width:100%;height:100%;border:0;background:#fff;display:block}
+.reader iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0;background:#fff;display:block}
 .reader .rtools{display:flex;gap:6px}
 .reader .rsep{display:inline-block;width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.35);margin:0 8px;vertical-align:middle}
 .reader .rpct{color:#fff;font-weight:700}
@@ -266,9 +266,10 @@ select.field{appearance:none;-webkit-appearance:none;padding-right:34px;backgrou
 .rfind .field{height:38px;max-width:420px;background:#161616;color:#fff}
 .rfind .iconbtn{background:#161616;color:#fff}
 .rfind .rcount{font-size:11.5px;font-weight:600;color:rgba(255,255,255,.6);min-width:76px}
-.rbody{flex:1;display:flex;min-height:0}
-.rframe{flex:1;display:flex;min-width:0;background:#fff}
-.rpanel{width:340px;flex:none;background:var(--panel);display:flex;flex-direction:column;min-height:0;animation:fade .2s}
+.rbody{flex:1 1 0;min-height:0;position:relative;overflow:hidden}
+.rframe{position:absolute;top:0;left:0;right:0;bottom:0;background:#fff;display:flex}
+.reader.with-panel .rframe{right:340px}
+.rpanel{position:absolute;top:0;right:0;bottom:0;width:340px;background:var(--panel);display:flex;flex-direction:column;min-height:0;animation:fade .2s;z-index:2}
 .rpanel[hidden]{display:none}
 .rtabs{display:flex;align-items:center;gap:4px;padding:12px}
 .rtabs > button:not(.iconbtn){height:32px;padding:0 9px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.08em;white-space:nowrap;text-transform:uppercase;color:var(--ink-2)}
@@ -290,7 +291,7 @@ select.field{appearance:none;-webkit-appearance:none;padding-right:34px;backgrou
 .rmark.hl{box-shadow:inset 3px 0 0 #E8C200}
 .rmark .rq{font-size:13px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .doc .meter{margin-top:12px;height:3px}
-.reader .loading{flex:1;display:flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:12px;letter-spacing:.2em;text-transform:uppercase}
+.reader .loading{position:absolute;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:12px;letter-spacing:.2em;text-transform:uppercase}
 
 /* tasks and week */
 .cols2{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px;align-items:start}
@@ -355,7 +356,7 @@ select.field{appearance:none;-webkit-appearance:none;padding-right:34px;backgrou
   .reader header .rt b{font-size:12px}
   .reader .rsep,.reader .rwhere{display:none}
   .rpanel{position:absolute;left:0;right:0;bottom:0;top:auto;width:auto;height:62%;border-radius:12px 12px 0 0;box-shadow:0 -20px 50px rgba(0,0,0,.45);z-index:2;padding-bottom:env(safe-area-inset-bottom)}
-  .rbody{position:relative}
+  .reader.with-panel .rframe{right:0}
   .hero{min-height:0}
   .hero .corner{position:static;order:-1;justify-content:flex-end}
   .hero h1{max-width:none}

@@ -1,11 +1,11 @@
 // MPH store: login, workspace state, undo and redo, saving and syncing with Supabase.
-import { uid, clone, DEFAULT_STATUSES, mkNode } from './core.js?v=0.1.2';
+import { uid, clone, DEFAULT_STATUSES, mkNode } from './core.js?v=0.1.3';
 
 export const CONFIG = {
   url: 'https://ibudcfsqsxjgxmngwrhk.supabase.co',
   key: 'sb_publishable_26qRWYPGawMiYPUPBsI1NA_HS2MuWOv',
   bucket: 'mph-files',
-  version: '0.1.2'
+  version: '0.1.3'
 };
 
 export const sb = window.supabase.createClient(CONFIG.url, CONFIG.key, {
@@ -190,10 +190,11 @@ export async function startSession(user) {
     const n = await importPortfolio();
     if (n) window.dispatchEvent(new CustomEvent('mph:toast', { detail: { text: `Brought in ${n} topics from your Work Portfolio` } }));
   }
+  setTimeout(() => { flushDocStates(); prefetchDocs(); }, 2500);
   if (listening) return;
   listening = true;
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && store.user) pull(); });
-  window.addEventListener('online', () => { if (!store.user) return; if (store.dirty) push(); else pull(); });
+  window.addEventListener('online', () => { if (!store.user) return; if (store.dirty) push(); else pull(); flushDocStates(); prefetchDocs(); });
   setInterval(() => { if (store.user && document.visibilityState === 'visible' && !store.dirty) pull(); }, 60000);
 }
 
@@ -249,16 +250,43 @@ export async function readDoc(doc) {
   return text;
 }
 export async function rememberDoc(doc, text) { fileCache.set(doc.id, text); try { if (window.caches) (await caches.open(DOC_CACHE)).put(docKey(doc), new Response(text, { headers: { 'content-type': 'text/plain;charset=utf-8' } })); } catch (e) {} }
+// Each document's own saved data (its progress) is kept on the device too, so it opens offline
+// and anything saved offline is sent when the connection returns.
+const DS = id => 'mph:ds:' + (store.user ? store.user.id : '') + ':' + id;
+function localDS(id) { try { return JSON.parse(localStorage.getItem(DS(id)) || 'null'); } catch (e) { return null; } }
+function keepDS(id, data, pending) { try { localStorage.setItem(DS(id), JSON.stringify({ data, pending, at: Date.now() })); } catch (e) {} }
 export async function readDocState(id) {
-  const { data } = await sb.from('mph_doc_state').select('data').eq('doc_id', id).maybeSingle();
-  return (data && data.data) || {};
+  const mine = localDS(id);
+  if (mine && mine.pending) { saveDocState(id, mine.data); return mine.data; }
+  try {
+    const { data, error } = await sb.from('mph_doc_state').select('data').eq('doc_id', id).maybeSingle();
+    if (error) throw error;
+    const d = (data && data.data) || (mine ? mine.data : {});
+    keepDS(id, d, false); return d;
+  } catch (e) { return mine ? mine.data : {}; }
 }
 const stateTimers = {};
 export function saveDocState(id, obj) {
+  keepDS(id, obj, true);
   clearTimeout(stateTimers[id]);
-  stateTimers[id] = setTimeout(() => {
-    sb.from('mph_doc_state').upsert({ user_id: store.user.id, doc_id: id, data: obj, updated_at: new Date().toISOString() }).then(() => {});
+  stateTimers[id] = setTimeout(async () => {
+    try {
+      const { error } = await sb.from('mph_doc_state').upsert({ user_id: store.user.id, doc_id: id, data: obj, updated_at: new Date().toISOString() });
+      if (!error) keepDS(id, obj, false);
+    } catch (e) {}
   }, 600);
+}
+function flushDocStates() {
+  if (!store.user) return;
+  Object.keys(localStorage).filter(k => k.startsWith('mph:ds:' + store.user.id + ':')).forEach(k => {
+    try { const v = JSON.parse(localStorage.getItem(k)); if (v && v.pending) saveDocState(k.split(':').pop(), v.data); } catch (e) {}
+  });
+}
+// Download every document once in the background so the whole library is ready offline.
+let prefetching = false;
+export async function prefetchDocs() {
+  if (prefetching || !store.user || !navigator.onLine) return; prefetching = true;
+  try { for (const d of store.state.docs.slice()) { try { await readDoc(d); } catch (e) {} } } finally { prefetching = false; }
 }
 
 export const newNode = mkNode;

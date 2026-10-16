@@ -1,6 +1,6 @@
 // MPH views. Each returns markup; app.js wires the actions.
-import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.1.2';
-import { store, WIDGETS, CONFIG } from './store.js?v=0.1.2';
+import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.1.3';
+import { store, WIDGETS, CONFIG } from './store.js?v=0.1.3';
 
 export const NAV = [
   { group: 'Work', items: [
