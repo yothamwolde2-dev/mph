@@ -105,6 +105,12 @@ const P = {
   more: '<circle cx="12" cy="5" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="12" cy="19" r="1.3"/>',
   edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
   file: '<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/>',
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>',
+  bookmark: '<path d="M6 3.5h12v17l-6-4.5-6 4.5z"/>',
+  list: '<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>',
+  highlight: '<path d="m14 4 6 6-9 9H5v-6z"/><path d="M4 21h16"/>',
+  textsm: '<path d="M5 18 9.5 7l4.5 11M6.6 14h5.8"/><path d="M17 15h4"/>',
+  textlg: '<path d="M4 19 9.5 5 15 19M6 14.5h7"/><path d="M19 12v6M16 15h6"/>',
   sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'
 };
 export const icon = (n, s = 18) => `<svg class="ico" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || ''}</svg>`;

@@ -1,7 +1,8 @@
 // MPH app: routing, rendering, actions, upload and the HTML reader.
-import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js';
-import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG } from './store.js';
-import * as V from './views.js';
+import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.1.1';
+import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG } from './store.js?v=0.1.1';
+import * as V from './views.js?v=0.1.1';
+import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.1.1';
 
 const $app = document.getElementById('app');
 const $layer = document.getElementById('layer');
@@ -9,7 +10,7 @@ const $toasts = document.getElementById('toasts');
 
 const ui = {
   open: load('mph:open', {}), drawer: null, customize: false, weekOffset: 0, allOpen: false,
-  menu: null, modal: null, authMode: 'signin', authMsg: '', authErr: false, focus: load('mph:focus', false)
+  menu: null, modal: null, authMode: 'signin', authMsg: '', authErr: false
 };
 function load(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } }
 function keep(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
@@ -17,19 +18,19 @@ function keep(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch 
 const route = () => (location.hash.replace(/^#\/?/, '') || 'home');
 
 // RENDER
-let readerId = null, frame = null;
 function render() {
   document.documentElement.dataset.theme = store.state.theme || 'dark';
-  if (!store.user) { readerId = null; $app.innerHTML = V.login(ui.authMode, ui.authMsg, ui.authErr); $layer.innerHTML = ''; return; }
+  if (!store.user) { leaveReader(); $app.innerHTML = V.login(ui.authMode, ui.authMsg, ui.authErr); $layer.innerHTML = ''; return; }
   const r = route();
-  if (r.startsWith('read/')) { mountReader(r.slice(5)); renderLayer(); return; }
-  readerId = null; frame = null;
+  if (r.startsWith('read/')) { const id = r.slice(5); const same = R.id === id && document.querySelector('.reader'); mountReader(id, V.shell('read', ''), $app); if (same) syncHl(); renderLayer(); return; }
+  leaveReader();
   const base = r.split('/')[0];
   const inner = base === 'projects' ? V.projects(ui) : base === 'tasks' ? V.tasks(ui) : base === 'week' ? V.week(ui)
     : base === 'learning' ? V.shelf('learning', ui) : base === 'library' ? V.shelf('library', ui) : base === 'settings' ? V.settings(ui) : V.home(ui);
+  const inner2 = base === 'home' ? installBanner() + inner : inner;
   const a = document.activeElement; const fk = a && a.dataset ? a.dataset.k : null;
   const sy = window.scrollY;
-  $app.innerHTML = V.shell(r, inner);
+  $app.innerHTML = V.shell(r, inner2);
   window.scrollTo(0, sy);
   renderLayer();
   const want = ui.wantFocus || fk;
@@ -37,15 +38,31 @@ function render() {
   ui.wantFocus = null;
 }
 function renderLayer() {
+  // keep anything typed in an open dialog when the screen refreshes
+  const kept = [...$layer.querySelectorAll('[data-m]')].map(el => el.value);
+  const hadModal = !!$layer.querySelector('.modal');
   let h = '';
   if (ui.drawer) h += V.drawer(ui.drawer);
   if (ui.modal) h += modal();
   if (ui.menu) h += menu();
   $layer.innerHTML = h;
+  if (ui.modal && hadModal) { const els = [...$layer.querySelectorAll('[data-m]')]; if (els.length === kept.length) els.forEach((el, i) => { el.value = kept[i]; }); syncNewCol(); }
   if (ui.drawer) { const t = $layer.querySelector('textarea.big'); if (t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; } }
 }
 onChange(render);
 window.addEventListener('hashchange', () => { ui.menu = null; ui.drawer = null; render(); window.scrollTo(0, 0); });
+
+// INSTALL: show how to turn MPH into an app until it runs as one
+const standalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+function installBanner() {
+  if (standalone() || load('mph:installHidden', false)) return '';
+  const ua = navigator.userAgent; const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const safari = /Safari/.test(ua) && !/Chrome|CriOS|Edg/.test(ua);
+  const how = ios ? 'In Safari, tap the Share button, then Add to Home Screen. Open MPH from its new icon and sign in once.'
+    : safari ? 'In Safari, open the File menu and choose Add to Dock. Open MPH from the Dock and sign in once.'
+    : 'Click the install icon at the right end of the address bar, or open the browser menu and choose Install MPH.';
+  return `<section class="install"><div><span class="eyebrow">Make it an app</span><p>${how}</p></div><button class="btn sm" data-act="hideInstall">Got it</button></section>`;
+}
 
 // TOASTS
 function toast(text, withUndo) {
@@ -55,7 +72,7 @@ function toast(text, withUndo) {
   while ($toasts.children.length > 2) $toasts.firstChild.remove();
   $toasts.appendChild(el); setTimeout(() => el.remove(), withUndo ? 6000 : 3500);
 }
-window.addEventListener('mph:toast', e => toast(e.detail.text));
+window.addEventListener('mph:toast', e => toast(e.detail.text, e.detail.undo));
 
 // HELPERS
 const S = () => store.state;
@@ -66,6 +83,7 @@ const nodeIn = (s, id) => locate(s.areas, id);
 // ACTIONS
 const A = {
   undo() { if (undo()) toast('Undone'); },
+  hideInstall() { keep('mph:installHidden', true); render(); },
   redo() { if (redo()) toast('Redone'); },
   customize() { ui.customize = !ui.customize; render(); },
   wMove(el) { const id = el.dataset.id, d = +el.dataset.d; mutate(s => { const o = s.home.order, i = o.indexOf(id), j = i + d; if (j < 0 || j >= o.length) return; [o[i], o[j]] = [o[j], o[i]]; }); },
@@ -148,6 +166,7 @@ const A = {
     const section = $layer.querySelector('[data-m="section"]').value;
     let col = $layer.querySelector('[data-m="col"]').value;
     const newName = ($layer.querySelector('[data-m="newcol"]') || {}).value;
+    if (col === '__new' && !(newName || '').trim()) { const f = $layer.querySelector('[data-m="newcol"]'); f.focus(); f.placeholder = 'Name the new collection first'; f.style.borderColor = '#B5432F'; return; }
     m.busy = true; m.msg = 'Uploading'; renderLayer();
     try {
       let newCol = null;
@@ -170,10 +189,7 @@ const A = {
     mutate(s => { if (col === '__new') { const c = { id: uid('c'), section, name: (nn || '').trim() || 'New collection' }; s.cols.push(c); col = c.id; } const d = s.docs.find(d => d.id === id); if (d) { d.section = section; d.col = col; } });
   },
   newColGo() { const v = $layer.querySelector('[data-m="name"]').value.trim(); const section = ui.modal.section; ui.modal = null; if (v) mutate(s => s.cols.push({ id: uid('c'), section, name: v })); else renderLayer(); },
-  readerBack() { const d = S().docs.find(d => d.id === readerId); if (history.length > 1 && document.referrer !== '' || history.state) history.back(); else location.hash = '#/' + (d ? d.section : 'library'); },
-  readerHome() { const d = S().docs.find(d => d.id === readerId); location.hash = '#/' + (d ? d.section : 'library'); },
-  readerReload() { const id = readerId; readerId = null; mountReader(id); },
-  readerFocus() { ui.focus = !ui.focus; keep('mph:focus', ui.focus); const r = document.querySelector('.reader'); if (r) r.classList.toggle('focus', ui.focus); }
+  readerHome() { const d = S().docs.find(d => d.id === R.id); location.hash = '#/' + (d ? d.section : 'library'); },
 };
 
 // change handlers
@@ -196,6 +212,8 @@ const C = {
   }
 };
 
+Object.assign(A, RA); Object.assign(C, RC);
+
 // MENUS AND MODALS
 function openMenu(type, id, e) { e.stopPropagation(); const r = e.target.closest('button').getBoundingClientRect(); ui.menu = { type, id, x: Math.min(r.right - 190, innerWidth - 200), y: r.bottom + 6 }; renderLayer(); }
 function menu() {
@@ -210,6 +228,7 @@ function menu() {
 function colOptions(section, sel, allowNew = true) {
   const cols = S().cols.filter(c => c.section === section);
   const fresh = allowNew && !cols.length && !sel;
+  if (!sel && cols.length) sel = cols[0].id;
   return cols.map(c => `<option value="${c.id}" ${c.id === sel ? 'selected' : ''}>${esc(c.name)}</option>`).join('') + `<option value="" ${!sel && !fresh ? 'selected' : ''}>Unsorted</option>` + (allowNew ? `<option value="__new" ${fresh ? 'selected' : ''}>New collection</option>` : '');
 }
 function modal() {
@@ -239,9 +258,17 @@ document.addEventListener('change', e => {
 // FILE PICKING AND DROPPING
 const niceName = n => n.replace(/\.html?$/i, '').replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b\w/g, c => c.toUpperCase());
 function pickFiles(section, col) {
-  const i = document.createElement('input'); i.type = 'file'; i.accept = '.html,.htm,text/html'; i.multiple = true;
-  i.onchange = () => openUpload([...i.files], section, col); i.click();
+  // Safari only delivers the chosen file when the picker is part of the page
+  const old = document.getElementById('mph-picker'); if (old) old.remove();
+  const i = document.createElement('input'); i.type = 'file'; i.id = 'mph-picker'; i.accept = '.html,.htm,text/html'; i.multiple = true;
+  i.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;width:1px;height:1px';
+  document.body.appendChild(i);
+  let done = false;
+  const take = () => { if (done || !i.files || !i.files.length) return; done = true; const files = [...i.files]; openUpload(files, section, col); setTimeout(() => i.remove(), 1000); };
+  i.addEventListener('change', take); i.addEventListener('input', take);
+  i.click();
 }
+function syncNewCol() { const c = $layer.querySelector('[data-m="col"]'); const box = $layer.querySelector('[data-newcol]'); if (box) box.hidden = !(c && c.value === '__new'); }
 function openUpload(files, section, col) {
   files = files.filter(f => /\.html?$/i.test(f.name) || f.type === 'text/html');
   if (!files.length) { toast('Choose HTML files (.html)'); return; }
@@ -251,49 +278,6 @@ document.addEventListener('dragover', e => { const z = e.target.closest && e.tar
 document.addEventListener('dragleave', e => { const z = e.target.closest && e.target.closest('[data-drop]'); if (z) z.classList.remove('dropping'); });
 document.addEventListener('drop', e => { const z = e.target.closest && e.target.closest('[data-drop]'); if (!z) return; e.preventDefault(); z.classList.remove('dropping'); openUpload([...e.dataTransfer.files], z.dataset.drop, ''); });
 
-// READER: opens an uploaded HTML document inside a sandbox. Its saved progress (localStorage) is kept per document and synced.
-function shim(id, data) {
-  const D = JSON.stringify(data || {}).replace(/</g, '\\u003c');
-  return `<script>(function(){var D=${D},I=${JSON.stringify(id)},T;var H=Object.prototype.hasOwnProperty;
-function send(){clearTimeout(T);T=setTimeout(function(){try{parent.postMessage({mph:'ls',id:I,data:D},'*')}catch(e){}},300)}
-function make(st,p){var api={getItem:function(k){k=String(k);return H.call(st,k)?st[k]:null},setItem:function(k,v){st[String(k)]=String(v);if(p)send()},removeItem:function(k){delete st[String(k)];if(p)send()},clear:function(){Object.keys(st).forEach(function(k){delete st[k]});if(p)send()},key:function(i){var k=Object.keys(st);return i<k.length?k[i]:null}};
-return new Proxy(api,{get:function(t,k){if(k==='length')return Object.keys(st).length;if(k in t)return t[k];return typeof k==='string'?api.getItem(k):undefined},set:function(t,k,v){api.setItem(k,v);return true},deleteProperty:function(t,k){api.removeItem(k);return true},has:function(t,k){return k in t||H.call(st,k)},ownKeys:function(){return Object.keys(st)},getOwnPropertyDescriptor:function(t,k){if(H.call(st,k))return{value:st[k],writable:true,enumerable:true,configurable:true}}})}
-var L=make(D,true),S=make({},false);
-try{Object.defineProperty(window,'localStorage',{configurable:true,get:function(){return L}})}catch(e){}
-try{Object.defineProperty(window,'sessionStorage',{configurable:true,get:function(){return S}})}catch(e){}
-})();<\/script>`;
-}
-function inject(html, id, data) {
-  const s = shim(id, data);
-  if (/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i, m => m + s);
-  if (/<html[^>]*>/i.test(html)) return html.replace(/<html[^>]*>/i, m => m + '<head>' + s + '</head>');
-  return s + html;
-}
-window.addEventListener('message', e => {
-  if (!frame || e.source !== frame.contentWindow) return;
-  const d = e.data; if (d && d.mph === 'ls' && d.id === readerId) saveDocState(d.id, d.data);
-});
-async function mountReader(id) {
-  if (readerId === id && document.querySelector('.reader')) return;
-  readerId = id; frame = null;
-  const doc = S().docs.find(d => d.id === id);
-  $app.innerHTML = V.shell('read', '');
-  const el = document.createElement('section'); el.className = 'reader' + (ui.focus ? ' focus' : '');
-  el.innerHTML = `<header><button class="iconbtn" data-act="readerHome" aria-label="Back">${icon('left', 18)}</button><div class="rt"><b>${esc(doc ? doc.title : 'Document')}</b><small>${esc(doc ? (doc.section === 'learning' ? 'Learning' : 'Library') + ' · ' + V.colName(doc.col) : '')}</small></div>
-    <button class="iconbtn" data-act="readerReload" aria-label="Reload">${icon('reload', 17)}</button><button class="iconbtn" data-act="readerFocus" aria-label="Focus mode">${icon('expand', 17)}</button></header><div class="loading">${doc ? 'Opening' : 'This document was removed'}</div>`;
-  $app.appendChild(el);
-  if (!doc) return;
-  touch(s => { const d = s.docs.find(d => d.id === id); if (d) d.opened = Date.now(); });
-  try {
-    const [html, st] = await Promise.all([readDoc(doc), readDocState(id)]);
-    if (readerId !== id) return;
-    const f = document.createElement('iframe');
-    f.setAttribute('sandbox', 'allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads');
-    f.setAttribute('title', doc.title);
-    f.srcdoc = inject(html, id, st);
-    el.querySelector('.loading').replaceWith(f); frame = f;
-  } catch (err) { const l = el.querySelector('.loading'); if (l) l.textContent = 'Could not open. Check your connection and reload.'; }
-}
 function focusDrawerTitle() { setTimeout(() => { const t = $layer.querySelector('textarea.big'); if (t) { t.focus(); t.select(); } }, 40); }
 
 // EVENTS

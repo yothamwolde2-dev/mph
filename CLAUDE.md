@@ -24,6 +24,7 @@ A personal app for Yotham, used on an M1 Mac and an iPhone. It brings projects, 
 * `js/core.js` helpers: dates, ids, icons, project tree logic, statuses.
 * `js/store.js` login, workspace state, undo and redo, saving, syncing, document files.
 * `js/views.js` every screen as a function returning markup.
+* `js/reader.js` the HTML reader: injects a small script into each document (storage and position bridge), bookmarks, highlights, contents, search, text size. Talks to the document only by postMessage.
 * `js/app.js` routing, the action handlers (`A` for clicks, `C` for field changes), dialogs, menus and the reader.
 * `js/supabase.js` the Supabase client library (v2.45.4), kept local.
 
@@ -33,7 +34,7 @@ A personal app for Yotham, used on an M1 Mac and an iPhone. It brings projects, 
 * Click actions use `data-act="name"` and live in `A`; field changes use `data-chg="name"` and live in `C`; Enter in a field uses `data-enter="name"`.
 * New home widgets: add to `WIDGETS` in `store.js` and a renderer in `W` in `views.js`.
 * New screens: add a view function, a route in `render()` and an entry in `NAV`.
-* Bump `CONFIG.version`, the `?v=` query in `index.html` and the cache name in `sw.js` on every release so devices pick up the new version. Add a line to `CHANGELOG.md`.
+* Bump `CONFIG.version`, every `?v=` query (index.html, the imports in js files, sw.js) and the cache name in `sw.js` on every release so devices pick up the new version. Add a line to `CHANGELOG.md`.
 
 ## Design rules (from Yotham, always apply)
 

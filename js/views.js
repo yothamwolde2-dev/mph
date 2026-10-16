@@ -1,6 +1,6 @@
 // MPH views. Each returns markup; app.js wires the actions.
-import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js';
-import { store, WIDGETS, CONFIG } from './store.js';
+import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.1.1';
+import { store, WIDGETS, CONFIG } from './store.js?v=0.1.1';
 
 export const NAV = [
   { group: 'Work', items: [
@@ -125,7 +125,7 @@ const W = {
   },
   continue() {
     const docs = S().docs.slice().sort((a, b) => (b.opened || b.added) - (a.opened || a.added)).slice(0, 4);
-    return ptitle('Continue reading', 'Library', '#/library') + (docs.length ? `<div class="continue-list">${docs.map(d => `<button class="doc" data-act="openDoc" data-id="${d.id}"><span class="bar"></span><span class="grow" style="min-width:0;flex:1"><span class="kind">${esc(colName(d.col))}</span><span class="dtitle" style="display:block">${esc(d.title)}</span></span><span class="faint" style="font-size:11px;white-space:nowrap">${esc(ago(d.opened))}</span></button>`).join('')}</div>`
+    return ptitle('Continue reading', 'Library', '#/library') + (docs.length ? `<div class="continue-list">${docs.map(d => `<button class="doc" data-act="openDoc" data-id="${d.id}"><span class="bar"></span><span class="grow" style="min-width:0;flex:1"><span class="kind">${esc(colName(d.col))}</span><span class="dtitle" style="display:block">${esc(d.title)}</span></span><span class="faint" style="font-size:11px;white-space:nowrap">${d.pct ? d.pct + '% · ' : ''}${esc(ago(d.opened))}</span></button>`).join('')}</div>`
       : `<p class="empty">Your HTML documents appear here once you upload them.</p><div style="margin-top:12px"><a class="btn" href="#/learning">${icon('upload', 15)}Upload a document</a></div>`);
   },
   learning() {
@@ -282,7 +282,7 @@ export function shelf(section, ui) {
 }
 const docTile = d => `<div class="doc" role="button" tabindex="0" data-act="openDoc" data-id="${d.id}"><span class="bar"></span>
   <div><span class="kind">HTML · ${esc(kb(d.size || 0))}</span><span class="dtitle">${esc(d.title)}</span></div>
-  <span class="dmeta"><span>${esc(ago(d.opened))}</span></span>
+  <div><span class="dmeta"><span>${esc(ago(d.opened))}</span><span>${d.pct ? d.pct + '%' : ''}${(d.marks || []).length ? ' · ' + d.marks.length + ' saved' : ''}</span></span>${d.pct ? `<span class="meter"><i style="width:${d.pct}%"></i></span>` : ''}</div>
   <button class="iconbtn menu" style="width:30px;height:30px" data-act="docMenu" data-id="${d.id}" data-stop aria-label="Document options">${icon('dots', 15)}</button></div>`;
 
 // SETTINGS

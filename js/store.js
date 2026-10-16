@@ -1,11 +1,11 @@
 // MPH store: login, workspace state, undo and redo, saving and syncing with Supabase.
-import { uid, clone, DEFAULT_STATUSES, mkNode } from './core.js';
+import { uid, clone, DEFAULT_STATUSES, mkNode } from './core.js?v=0.1.1';
 
 export const CONFIG = {
   url: 'https://ibudcfsqsxjgxmngwrhk.supabase.co',
   key: 'sb_publishable_26qRWYPGawMiYPUPBsI1NA_HS2MuWOv',
   bucket: 'mph-files',
-  version: '0.1.0'
+  version: '0.1.1'
 };
 
 export const sb = window.supabase.createClient(CONFIG.url, CONFIG.key, {
@@ -152,7 +152,9 @@ export async function pull(force = false) {
     if (!ins.error) { store.state = normalize(first); store.rev = 1; store.dirty = false; store.sync = 'idle'; saveLocal(); emit(); }
     return 'created';
   }
+  const was = store.sync; let changed = false;
   if (force || data.rev > store.rev) {
+    changed = true;
     if (store.dirty && !force && JSON.stringify(normalize(data.data)) !== JSON.stringify(store.state)) {
       try { localStorage.setItem(LKEY() + ':backup', JSON.stringify({ at: Date.now(), state: store.state })); } catch (e) {}
       window.dispatchEvent(new CustomEvent('mph:toast', { detail: { text: 'Updated with changes from your other device' } }));
@@ -161,7 +163,8 @@ export async function pull(force = false) {
   } else if (data.rev < store.rev) {
     store.rev = data.rev; store.dirty = true;
   }
-  store.sync = 'idle'; saveLocal(); emit();
+  store.sync = 'idle'; saveLocal();
+  if (changed || was !== 'idle') emit();
   if (store.dirty) schedulePush();
 }
 
