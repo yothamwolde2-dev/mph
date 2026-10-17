@@ -1,8 +1,11 @@
 // MPH app: routing, rendering, actions, upload and the HTML reader.
-import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.1.3';
-import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG } from './store.js?v=0.1.3';
-import * as V from './views.js?v=0.1.3';
-import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.1.3';
+import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.2.0';
+import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG } from './store.js?v=0.2.0';
+import * as V from './views.js?v=0.2.0';
+import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.2.0';
+import { LA, learningHub, langView, stopSpeech } from './lang.js?v=0.2.0';
+import { bookView, afterRender as bookAfter, BA, BC, bookUndo } from './book.js?v=0.2.0';
+import { warmContent } from './content.js?v=0.2.0';
 
 const $app = document.getElementById('app');
 const $layer = document.getElementById('layer');
@@ -27,13 +30,15 @@ function render() {
   leaveReader();
   const base = r.split('/')[0];
   const inner = base === 'projects' ? V.projects(ui) : base === 'tasks' ? V.tasks(ui) : base === 'week' ? V.week(ui)
-    : base === 'learning' ? V.shelf('learning', ui) : base === 'library' ? V.shelf('library', ui) : base === 'settings' ? V.settings(ui) : V.home(ui);
+    : base === 'learning' ? learningHub() : base === 'lang' ? langView(r.split('/').slice(1)) : base === 'book' ? bookView(r.split('/').slice(1))
+    : base === 'library' ? V.shelf('library', ui) : base === 'settings' ? V.settings(ui) : V.home(ui);
   const inner2 = base === 'home' ? installBanner() + inner : inner;
   const a = document.activeElement; const fk = a && a.dataset ? a.dataset.k : null;
   const sy = window.scrollY;
   $app.innerHTML = V.shell(r, inner2);
   if (r !== lastRoute) { const v = document.getElementById('view'); if (v) v.classList.add('enter'); lastRoute = r; }
   window.scrollTo(0, sy);
+  if (base === 'book') bookAfter();
   renderLayer();
   const want = ui.wantFocus || fk;
   if (want) { const el = document.querySelector(`[data-k="${CSS.escape(want)}"]`); if (el) { el.focus(); if (ui.wantFocus && el.select) el.select(); } }
@@ -55,7 +60,8 @@ function renderLayer() {
 let rq = 0; const queueRender = () => { if (!rq) rq = requestAnimationFrame(() => { rq = 0; render(); }); };
 onChange(queueRender);
 window.addEventListener('mph:sync', () => { const el = document.querySelector('.sync'); if (!el) return; const l = V.syncLabel(); el.className = 'sync ' + l.cls; el.innerHTML = '<i></i>' + l.txt; });
-window.addEventListener('hashchange', () => { ui.menu = null; ui.drawer = null; render(); window.scrollTo(0, 0); });
+window.addEventListener('hashchange', () => { ui.menu = null; ui.drawer = null; window.scrollTo(0, 0); render(); });
+window.addEventListener('mph:redraw', () => queueRender());
 
 // INSTALL: show how to turn MPH into an app until it runs as one
 const standalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
@@ -74,7 +80,7 @@ function installBanner() {
 function toast(text, withUndo) {
   const el = document.createElement('div'); el.className = 'toast';
   el.innerHTML = `<span>${esc(text)}</span>${withUndo ? '<button>Undo</button>' : ''}`;
-  if (withUndo) el.querySelector('button').onclick = () => { undo(); el.remove(); };
+  if (withUndo) el.querySelector('button').onclick = () => { if (typeof withUndo === 'function') withUndo(); else undo(); el.remove(); };
   while ($toasts.children.length > 2) $toasts.firstChild.remove();
   $toasts.appendChild(el); setTimeout(() => el.remove(), withUndo ? 6000 : 3500);
 }
@@ -218,7 +224,7 @@ const C = {
   }
 };
 
-Object.assign(A, RA); Object.assign(C, RC);
+Object.assign(A, RA, LA, BA); Object.assign(C, RC, BC);
 
 // MENUS AND MODALS
 function openMenu(type, id, e) { e.stopPropagation(); const r = e.target.closest('button').getBoundingClientRect(); ui.menu = { type, id, x: Math.min(r.right - 190, innerWidth - 200), y: r.bottom + 6 }; renderLayer(); }
@@ -329,7 +335,7 @@ document.addEventListener('submit', async e => {
 
 // BOOT
 sb.auth.onAuthStateChange((ev, session) => {
-  if (session && session.user && (!store.user || store.user.id !== session.user.id)) { ui.authMsg = ''; startSession(session.user); }
+  if (session && session.user && (!store.user || store.user.id !== session.user.id)) { ui.authMsg = ''; startSession(session.user).then(() => setTimeout(warmContent, 1500)); }
   if (ev === 'SIGNED_OUT' && navigator.onLine) { endSession(); render(); }
 });
 (async () => {
@@ -337,7 +343,7 @@ sb.auth.onAuthStateChange((ev, session) => {
   const saved = (() => { try { const v = JSON.parse(localStorage.getItem('mph-auth') || 'null'); return v && (v.user || (v.currentSession && v.currentSession.user)); } catch (e) { return null; } })();
   let session = null;
   try { const { data } = await sb.auth.getSession(); session = data.session; } catch (e) {}
-  if (session) await startSession(session.user);
+  if (session) { await startSession(session.user); setTimeout(warmContent, 1500); }
   else if (saved && !navigator.onLine) await startSession(saved);
   else render();
 })();

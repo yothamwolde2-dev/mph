@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0, 17 October 2026
+
+* New Learning section, built natively for speed: no uploads needed, everything opens instantly and works offline.
+* Languages: Chinese with HSK 2 (from the Tingdong lab) and a new HSK 3 course with 307 words, 16 long dialogs, 4 listening passages and 24 grammar points. HSK 4 and HSK 5 are locked. German and Afaan Oromo are ready as places for future courses.
+* Flashcards with spaced repetition in four decks: read, listen, recall and grammar patterns, with audio from the device's Chinese voice.
+* Dialog player with play all, speed, listen only mode, pinyin and English toggles, and comprehension questions.
+* Listening drills: hear the word, hear the sentence, dialog challenge, listening passages. Missed words return to the Listen deck.
+* Study book reader for Corporate Management Book 1: contents, visible bookmark ribbons, resume to the exact paragraph, highlights with notes, search, glossary, cases, skills, frameworks, templates, simulations and quizzes.
+* Private content: course and book files are locked with a key that only your login can read.
+
 ## 0.1.3, 16 October 2026
 
 * Reader: the document area is pinned to the full space, fixing the black screen in Safari.

@@ -1,6 +1,7 @@
 // MPH views. Each returns markup; app.js wires the actions.
-import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.1.3';
-import { store, WIDGETS, CONFIG } from './store.js?v=0.1.3';
+import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.2.0';
+import { store, WIDGETS, CONFIG } from './store.js?v=0.2.0';
+import { homeLearning } from './lang.js?v=0.2.0';
 
 export const NAV = [
   { group: 'Work', items: [
@@ -15,7 +16,7 @@ export const NAV = [
   ] }
 ];
 export const TABS = ['home', 'projects', 'tasks', 'learning', 'library'];
-const LABEL = { home: 'Home', projects: 'Projects', tasks: 'Tasks', week: 'Week', learning: 'Learning', library: 'Library', settings: 'Settings', read: 'Reader' };
+const LABEL = { lang: 'Learning', book: 'Learning', home: 'Home', projects: 'Projects', tasks: 'Tasks', week: 'Week', learning: 'Learning', library: 'Library', settings: 'Settings', read: 'Reader' };
 
 const S = () => store.state;
 const stOf = key => S().statuses.find(s => s.key === key) || S().statuses[0];
@@ -129,9 +130,7 @@ const W = {
       : `<p class="empty">Your HTML documents appear here once you upload them.</p><div style="margin-top:12px"><a class="btn" href="#/learning">${icon('upload', 15)}Upload a document</a></div>`);
   },
   learning() {
-    const cols = S().cols.filter(c => c.section === 'learning');
-    if (!cols.length) return ptitle('Learning shelf', 'Open learning', '#/learning') + `<p class="empty">Courses you add in Learning line up here: Chinese, German, Afaan Oromo, business and more.</p>`;
-    return ptitle('Learning shelf', 'Open learning', '#/learning') + `<div class="docs">${cols.map(c => { const n = S().docs.filter(d => d.col === c.id).length; return `<a class="doc" href="#/learning"><span class="bar"></span><span class="kind">${n} ${n === 1 ? 'document' : 'documents'}</span><span class="dtitle">${esc(c.name)}</span><span class="dmeta"><span>Course</span></span></a>`; }).join('')}</div>`;
+    return ptitle('Learning', 'Open learning', '#/learning') + homeLearning();
   }
 };
 
@@ -265,8 +264,8 @@ export function week(ui) {
 // LEARNING and LIBRARY
 export function shelf(section, ui) {
   const isL = section === 'learning';
-  const cols = S().cols.filter(c => c.section === section);
-  const docs = S().docs.filter(d => d.section === section);
+  const cols = S().cols.filter(c => section === 'library' || c.section === section);
+  const docs = S().docs.filter(d => section === 'library' || d.section === section);
   const groups = cols.map(c => ({ c, list: docs.filter(d => d.col === c.id) }));
   const loose = docs.filter(d => !cols.some(c => c.id === d.col));
   if (loose.length) groups.push({ c: { id: '', name: 'Unsorted' }, list: loose });
@@ -337,7 +336,7 @@ export function syncLabel() {
   return { cls: v === 'saving' ? 'saving' : (v === 'offline' || v === 'error') ? 'off' : '', txt: v === 'saving' ? 'Saving' : v === 'offline' ? 'Offline, saved on this device' : v === 'error' ? 'Not synced, will retry' : 'Synced' };
 }
 export function shell(route, inner) {
-  const st = S(); const r = route.split('/')[0];
+  const st = S(); const r0 = route.split('/')[0]; const r = (r0 === 'lang' || r0 === 'book') ? 'learning' : r0;
   const { cls: syncCls, txt: syncTxt } = syncLabel();
   const counts = { tasks: agenda().filter(a => !a.done && a.d && a.d <= today()).length, learning: st.docs.filter(d => d.section === 'learning').length, library: st.docs.filter(d => d.section === 'library').length };
   return `<div class="shell">
