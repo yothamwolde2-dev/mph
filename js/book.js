@@ -1,6 +1,7 @@
 // MPH study books. Rendered natively (no iframe) so bookmarks, resume and highlights are exact.
-import { esc, icon, uid } from './core.js?v=0.2.0';
-import { catalog, peek, progress, saveProgress } from './content.js?v=0.2.0';
+import { esc, icon, uid } from './core.js?v=0.3.0';
+import { catalog, peek, progress, saveProgress } from './content.js?v=0.3.0';
+import { webHost, startHost } from './webrun.js?v=0.3.0';
 
 const redraw = () => window.dispatchEvent(new Event('mph:redraw'));
 const toast = (t, undo) => window.dispatchEvent(new CustomEvent('mph:toast', { detail: { text: t, undo } }));
@@ -8,12 +9,18 @@ const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; 
 const keep = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const strip = h => String(h || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 
-const B = { id: null, panel: innerWidth >= 1080 ? load('mph:bkpanel', '') : '', jump: null, q: '', gq: '', gcat: '', find: '', lastUndo: null };
+const B = { wtext: {}, route: null, cur: null, id: null, panel: innerWidth >= 1080 ? load('mph:bkpanel', '') : '', jump: null, q: '', gq: '', gcat: '', find: '', lastUndo: null };
 const PK = id => 'book:' + id;
 function prog(id) { const p = progress(PK(id), redraw); if (!p) return null; p.marks = p.marks || []; p.hls = p.hls || []; p.done = p.done || {}; p.quiz = p.quiz || {}; p.reflect = p.reflect || {}; p.check = p.check || {}; return p; }
 const save = (id, p, now) => saveProgress(PK(id), p, now);
+const gone = (p, id) => { p.gone = p.gone || {}; p.gone[id] = Date.now(); };
 
+const isWeb = bk => bk && bk.kind === 'web';
+const WK = id => 'ch_' + id;
+const chapters = bk => isWeb(bk) ? bk.sections.length : bk.ch.length;
+const doneCount = (bk, p) => Object.keys(p.done).filter(k => k.startsWith('ch')).length;
 function sections(bk) {
+  if (isWeb(bk)) return bk.sections.map((x, i) => ({ key: WK(x.id), id: x.id, t: x.t, kind: 'web', part: x.part || bk.title, n: x.n !== '' && x.n !== undefined ? +x.n : null, i }));
   const s = [];
   bk.front.forEach((f, i) => s.push({ key: 'f' + i, t: f.t, kind: 'front', part: 'Before you begin' }));
   bk.ch.forEach(c => s.push({ key: 'ch' + c.n, t: c.t, kind: 'ch', n: c.n, part: bk.parts[c.part] }));
@@ -35,7 +42,8 @@ function getBook(id) {
   const idx = catalog(redraw); if (!idx) return [null, null];
   if (idx.__error) return [idx, { __error: 1 }];
   const meta = idx.books.find(b => b.id === id); if (!meta) return [null, { __error: 1 }];
-  return [meta, peek(meta.file, meta.v, redraw)];
+  const bk = peek(meta.file, meta.v, redraw); if (bk && !bk.__error) bk.__v = meta.v;
+  return [meta, bk];
 }
 
 export function bookView(parts) {
@@ -48,12 +56,12 @@ export function bookView(parts) {
   if (!sec) return cover(id, meta, bk, p, secs);
   const i = secs.findIndex(s => s.key === sec); if (i < 0) return `<p class="muted">Section not found.</p>`;
   const s = secs[i];
-  const chDone = Object.keys(p.done).filter(k => k.startsWith('ch')).length;
-  const pct = Math.round(chDone / bk.ch.length * 100);
+  const pct = Math.round(doneCount(bk, p) / chapters(bk) * 100);
+  if (isWeb(bk)) return webView(id, meta, bk, p, secs, s, pct);
   const nav = `<div class="bk-bar">
       <a class="iconbtn" href="#/book/${id}" aria-label="Contents" title="Contents">${icon('left', 16)}</a>
       <div class="bk-bt"><b>${esc(s.t)}</b><small>${esc(meta.title)} · ${pct}% read</small></div>
-      <button class="iconbtn" data-act="bkMarkTop" aria-label="Bookmark this place" title="Bookmark this place">${icon('bookmark', 17)}</button>
+      <button class="iconbtn" data-act="bkMarkTop" aria-label="Bookmark this place" title="Bookmark this place (B)">${icon('bookmark', 17)}</button>
       <button class="iconbtn ${B.panel ? 'on' : ''}" data-act="bkPanel" aria-label="Contents, bookmarks and highlights" title="Contents, bookmarks and highlights">${icon('list', 17)}</button>
       ${i > 0 ? `<a class="iconbtn" href="#/book/${id}/${secs[i - 1].key}" aria-label="Previous" title="Previous">${icon('up', 16)}</a>` : ''}
       ${i < secs.length - 1 ? `<a class="iconbtn" href="#/book/${id}/${secs[i + 1].key}" aria-label="Next" title="Next">${icon('down', 16)}</a>` : ''}
@@ -62,14 +70,60 @@ export function bookView(parts) {
   return `${nav}<div class="bk-wrap ${B.panel ? 'with-panel' : ''}"><article class="bk" data-sec="${s.key}">${renderSection(id, bk, s, p)}${next}</article>${B.panel ? `<aside class="bk-panel">${panel(id, bk, p, secs, s.key)}</aside>` : ''}</div>`;
 }
 
+// WEB BOOKS: the document keeps its own design and tools. One long page, MPH adds the reading tools.
+function webView(id, meta, bk, p, secs, s, pct) {
+  const route = id + '/' + s.key;
+  if (B.route !== route) { B.route = route; B.cur = s.key; if (!B.jump) B.jump = { sec: s.key, b: -1 }; }
+  const cur = secs.find(x => x.key === B.cur) || s;
+  const nav = `<div class="bk-bar">
+      <a class="iconbtn" href="#/book/${id}" aria-label="Contents" title="Contents">${icon('left', 16)}</a>
+      <div class="bk-bt"><b id="wbt">${esc(cur.t)}</b><small>${esc(meta.title)} · <span id="wbp">${pct}</span>% read</small></div>
+      <button class="iconbtn" data-act="bkMarkTop" aria-label="Bookmark this place" title="Bookmark this place (B)">${icon('bookmark', 17)}</button>
+      <button class="iconbtn ${B.panel ? 'on' : ''}" data-act="bkPanel" aria-label="Contents, bookmarks and highlights" title="Contents, bookmarks and highlights">${icon('list', 17)}</button>
+      <button class="iconbtn" data-act="bkStep" data-d="-1" aria-label="Previous section" title="Previous section">${icon('up', 16)}</button>
+      <button class="iconbtn" data-act="bkStep" data-d="1" aria-label="Next section" title="Next section">${icon('down', 16)}</button>
+    </div>`;
+  return `${nav}<div class="bk-wrap web ${B.panel ? 'with-panel' : ''}"><article class="bk wb-art" data-web="${id}" data-sec="${cur.key}"><div class="wbslot"></div></article>${B.panel ? `<aside class="bk-panel">${panel(id, bk, p, secs, cur.key)}</aside>` : ''}</div>`;
+}
+const WSEL = 'h1,h2,h3,h4,h5,p,li,dt,dd,blockquote,pre,figcaption,summary,table,.call';
+function numberWeb(el, bk) {
+  const hide = (bk.hide || []).join(',');
+  let n = 0;
+  el.querySelectorAll(WSEL).forEach(x => {
+    if (hide && x.closest(hide)) return;
+    const up = x.parentElement && x.parentElement.closest('[data-b]'); if (up && el.contains(up)) return;
+    if ((x.textContent || '').trim().length < 2) return;
+    const sec = x.closest(bk.secSel); if (!sec || !sec.id) return;
+    x.dataset.b = n++; x.dataset.s = WK(sec.id);
+  });
+  // Text of every section as drawn, so search also finds what the document's tools display.
+  try {
+    const t = {}; el.querySelectorAll(bk.secSel).forEach(sec => { if (sec.id) t[sec.id] = strip(sec.textContent); });
+    B.wtext[bk.id] = t; keep('mph:wbx:' + bk.id + '@' + bk.__v, t);
+  } catch (e) {}
+}
+function webText(bk, s) {
+  const t = B.wtext[bk.id] || (B.wtext[bk.id] = load('mph:wbx:' + bk.id + '@' + bk.__v, {}));
+  const live = t[s.id] || ''; const own = (bk.sections[s.i] || {}).x || '';
+  return live.length > own.length ? live : own;
+}
+function webStore() {
+  return {
+    get: () => { const p = prog(B.id); return (p && (p.ls = p.ls || {})) || {}; },
+    set: (k, v) => { const p = prog(B.id); if (!p) return; p.ls = p.ls || {}; if (v === undefined) delete p.ls[k]; else p.ls[k] = v; save(B.id, p); }
+  };
+}
+function webSecEl(art, key) { return art.querySelector('#' + CSS.escape(key.slice(3))); }
+
 function cover(id, meta, bk, p, secs) {
-  const chDone = Object.keys(p.done).filter(k => k.startsWith('ch')).length;
-  const pct = Math.round(chDone / bk.ch.length * 100);
+  B.route = null;
+  const chDone = doneCount(bk, p);
+  const pct = Math.round(chDone / chapters(bk) * 100);
   const resume = p.pos && secs.find(s => s.key === p.pos.sec);
   const groups = [];
   secs.forEach(s => { let g = groups.find(x => x.part === s.part); if (!g) groups.push(g = { part: s.part, items: [] }); g.items.push(s); });
-  return `<section class="bk-cover"><span class="eyebrow">Study book</span><h1 class="display">${esc(meta.title)}</h1><p class="muted">${esc(meta.sub)}</p>
-      <div class="bk-cprog"><span class="meter"><i style="width:${pct}%"></i></span><span class="num">${chDone} of ${bk.ch.length} chapters · ${pct}%</span></div>
+  return `<section class="bk-cover"><span class="eyebrow">${isWeb(bk) ? 'Library' : 'Study book'}</span><h1 class="display">${esc(meta.title)}</h1><p class="muted">${esc(meta.sub)}</p>
+      <div class="bk-cprog"><span class="meter"><i style="width:${pct}%"></i></span><span class="num">${chDone} of ${chapters(bk)} ${isWeb(bk) ? 'sections' : 'chapters'} · ${pct}%</span></div>
       <div class="bk-cact">${resume ? `<button class="btn primary" data-act="bkResume">${icon('book', 15)}Continue: ${esc(resume.t)}</button>` : `<a class="btn primary" href="#/book/${id}/${secs[0].key}">${icon('book', 15)}Start reading</a>`}
       <span class="faint">${p.marks.length} bookmarks · ${p.hls.length} highlights</span></div></section>
     <div class="bk-search"><input class="field" id="bkq" value="${esc(B.q)}" placeholder="Search the whole book" autocomplete="off"></div>
@@ -97,9 +151,10 @@ function panel(id, bk, p, secs, cur) {
 
 let textIndex = null;
 function searchResults(id, bk, secs) {
-  if (!textIndex) textIndex = secs.map(s => ({ s, text: strip(sectionHtml(bk, s)) }));
+  const sig = id + ':' + Object.keys(B.wtext[id] || {}).length;
+  if (!textIndex || textIndex.sig !== sig) textIndex = { sig, list: secs.map(s => ({ s, text: strip(sectionHtml(bk, s)) })) };
   const q = B.q.trim().toLowerCase(); const out = [];
-  for (const { s, text } of textIndex) {
+  for (const { s, text } of textIndex.list) {
     const low = text.toLowerCase(); let at = low.indexOf(q), n = 0;
     while (at > -1 && n < 3) { out.push({ s, snip: text.slice(Math.max(0, at - 60), at + q.length + 80), at }); n++; at = low.indexOf(q, at + q.length); }
     if (out.length > 40) break;
@@ -110,6 +165,7 @@ function searchResults(id, bk, secs) {
 
 // Raw html for a section (used for rendering and for search)
 function sectionHtml(bk, s) {
+  if (s.kind === 'web') return webText(bk, s);
   if (s.kind === 'front') return bk.front[+s.key.slice(1)].body;
   if (s.kind === 'pv') return bk.previews[+s.key.slice(2)].body;
   if (s.kind === 'ch') { const c = bk.ch.find(c => c.n === s.n); return [c.q, c.learn, c.understand, c.see, c.practice && (c.practice.skill + c.practice.task), c.decide && (c.decide.case + c.decide.ask), (c.take || []).join(' '), c.reflect].join(' '); }
@@ -174,6 +230,7 @@ let hover = null;
 export function afterRender() {
   const art = document.querySelector('.bk[data-sec]'); if (!art || !B.id) return;
   const p = prog(B.id); if (!p) return;
+  if (art.dataset.web) return webAfter(art, p);
   const sec = art.dataset.sec;
   const blocks = art.querySelectorAll('.bk-body > *:not(section), .bk-body > section > *, .bk-body > details, .bk-body > div');
   let n = 0; blocks.forEach(el => { if (!el.dataset.b) el.dataset.b = n++; });
@@ -181,9 +238,29 @@ export function afterRender() {
   paintHighlights(art, p, sec);
   if (B.jump && B.jump.sec === sec) {
     const el = art.querySelector(`[data-b="${B.jump.b}"]`);
-    if (el) requestAnimationFrame(() => { el.scrollIntoView({ block: 'start' }); el.classList.add('bk-flash'); setTimeout(() => el.classList.remove('bk-flash'), 1600); });
+    if (el) requestAnimationFrame(() => { el.scrollIntoView({ block: 'start' }); el.classList.add('bk-flash'); setTimeout(() => el.classList.remove('bk-flash'), 1600); clearTimeout(posT); posT = setTimeout(() => notePos(), 700); });
     if (B.jump.find) paintFind(art, B.jump.find);
     B.jump = null;
+  }
+}
+function webAfter(art, p) {
+  const [meta, bk] = getBook(B.id); if (!bk || bk.__error) return;
+  const h = webHost(bk, webStore());
+  const slot = art.querySelector('.wbslot'); if (slot) slot.replaceWith(h.el);
+  const first = !h.started;
+  startHost(h, bk);
+  if (first) numberWeb(h.el, bk);
+  h.el.querySelectorAll('.bk-marked').forEach(x => x.classList.remove('bk-marked'));
+  p.marks.forEach(m => { const el = h.el.querySelector(`[data-b="${m.b}"]`); if (el) el.classList.add('bk-marked'); });
+  paintHighlights(h.el, p, null);
+  if (B.jump) {
+    const j = B.jump; B.jump = null;
+    const go = () => {
+      const el = j.b >= 0 ? h.el.querySelector(`[data-b="${j.b}"]`) : webSecEl(h.el, j.sec);
+      if (el) { el.scrollIntoView({ block: 'start' }); if (j.b >= 0) { el.classList.add('bk-flash'); setTimeout(() => el.classList.remove('bk-flash'), 1600); } }
+      if (j.find) paintFind(webSecEl(h.el, j.sec) || h.el, j.find);
+    };
+    requestAnimationFrame(() => requestAnimationFrame(() => { go(); clearTimeout(posT); posT = setTimeout(() => notePos(), 700); }));
   }
 }
 function rangesIn(root, text, limit = 1) {
@@ -203,7 +280,7 @@ function rangesIn(root, text, limit = 1) {
 function paintHighlights(art, p, sec) {
   const hasApi = window.CSS && CSS.highlights && window.Highlight;
   const rs = [];
-  p.hls.filter(h => h.sec === sec).forEach(h => { const el = art.querySelector(`[data-b="${h.b}"]`) || art; rs.push(...rangesIn(el, h.text, 1)); });
+  p.hls.filter(h => !sec || h.sec === sec).forEach(h => { const el = art.querySelector(`[data-b="${h.b}"]`) || art; rs.push(...rangesIn(el, h.text, 1)); });
   if (hasApi) { if (rs.length) CSS.highlights.set('bk-hl', new Highlight(...rs)); else CSS.highlights.delete('bk-hl'); }
   else rs.forEach(r => { try { const m = document.createElement('mark'); m.className = 'bk-mark'; r.surroundContents(m); } catch (e) {} });
 }
@@ -213,31 +290,63 @@ function paintFind(art, q) {
   if (rs[0]) { const el = rs[0].startContainer.parentElement; el && el.scrollIntoView({ block: 'center' }); }
 }
 
+// The paragraph at the top of the reading area, found by looking at the screen itself
+// (works for any layout: columns, tables, tabs).
+function topBlock(art) {
+  const r = art.getBoundingClientRect(); if (!r.width) return null;
+  const xs = [0.5, 0.3, 0.7, 0.15].map(f => r.left + r.width * f);
+  for (let y = 136; y < innerHeight - 10; y += 16) for (const x of xs) {
+    const e = document.elementFromPoint(x, y); const b = e && e.closest && e.closest('[data-b]');
+    if (b && art.contains(b)) return b;
+  }
+  // something covers the page (the contents sheet on a phone): use the first paragraph below the bar
+  for (const b of art.querySelectorAll('[data-b]')) { const q = b.getBoundingClientRect(); if (q.height && q.bottom > 136) return b; }
+  return null;
+}
 // Reading position: the first paragraph at the top of the screen. Saved quietly.
 let posT = null;
-window.addEventListener('scroll', () => {
-  const art = document.querySelector('.bk[data-sec]'); if (!art || !B.id) return;
-  clearTimeout(posT); posT = setTimeout(() => {
+function notePos(now) {
+    const art = document.querySelector('.bk[data-sec]'); if (!art || !B.id) return;
     const p = prog(B.id); if (!p) return;
-    const sec = art.dataset.sec; const top = 130;
-    const els = art.querySelectorAll('[data-b]'); let cur = null, last = null;
-    for (const el of els) { const r = el.getBoundingClientRect(); last = el; if (r.bottom > top) { cur = el; break; } }
-    if (!cur) return;
+    const cur = topBlock(art); if (!cur) return;
+    const last = art.querySelector('.bk-next') || [...art.querySelectorAll('[data-b]')].pop();
+    const sec = cur.dataset.s || art.dataset.sec;
     p.pos = { sec, b: +cur.dataset.b, at: Date.now() };
+    if (art.dataset.web) { webScroll(art, p, sec); save(B.id, p, now); return; }
     const end = art.querySelector('.bk-next') || last;
     if (end && end.getBoundingClientRect().top < innerHeight && sec.startsWith('ch') && !p.done[sec]) { p.done[sec] = Date.now(); toast('Chapter complete'); }
-    save(B.id, p);
-  }, 500);
+    save(B.id, p, now);
+}
+window.addEventListener('scroll', () => {
+  if (!document.querySelector('.bk[data-sec]') || !B.id) return;
+  clearTimeout(posT); posT = setTimeout(() => notePos(), 500);
 }, { passive: true });
+// Leaving the app (closing it on the iPhone, switching away on the Mac) saves the place at once.
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { clearTimeout(posT); notePos(true); } });
+window.addEventListener('pagehide', () => { clearTimeout(posT); notePos(true); });
+
+function webScroll(art, p, sec) {
+  const [meta, bk] = getBook(B.id); if (!bk || bk.__error) return;
+  if (sec !== B.cur) { B.cur = sec; art.dataset.sec = sec; const s = bk.sections.find(x => WK(x.id) === sec); const t = document.getElementById('wbt'); if (s && t) t.textContent = s.t; }
+  // a section counts as read once its end has been on screen
+  let added = 0;
+  art.querySelectorAll(bk.secSel).forEach(el => {
+    if (!el.id) return; const k = WK(el.id); if (p.done[k]) return;
+    const r = el.getBoundingClientRect(); if (r.height && r.bottom < innerHeight && r.bottom > -innerHeight * 3) { p.done[k] = Date.now(); added++; }
+  });
+  if (added) { const pe = document.getElementById('wbp'); if (pe) pe.textContent = Math.round(doneCount(bk, p) / chapters(bk) * 100); }
+}
 
 // Hover ribbon on desktop: bookmark any paragraph directly.
 document.addEventListener('mouseover', e => {
   const el = e.target.closest && e.target.closest('.bk [data-b]'); const art = document.querySelector('.bk[data-sec]');
+  if (el && hover && el === hover.target) return;
   if (!art) { if (hover) hover.hidden = true; return; }
   if (!el) return;
   if (!hover) { hover = document.createElement('button'); hover.className = 'bk-hover'; hover.setAttribute('aria-label', 'Bookmark this paragraph'); hover.innerHTML = icon('ribbon', 16); document.body.appendChild(hover); hover.addEventListener('click', () => { if (hover.target) toggleMark(hover.target); }); }
   const r = el.getBoundingClientRect(); const ar = art.getBoundingClientRect();
-  hover.style.top = (r.top + window.scrollY + 2) + 'px'; hover.style.left = (ar.left - 40) + 'px'; hover.target = el; hover.hidden = ar.left < 50;
+  const left = art.dataset.web ? Math.max(ar.left + 2, r.left - 38) : ar.left - 40;
+  hover.style.top = (r.top + window.scrollY + 2) + 'px'; hover.style.left = left + 'px'; hover.target = el; hover.hidden = art.dataset.web ? r.left - ar.left < 30 : ar.left < 50;
 });
 window.addEventListener('hashchange', () => { if (hover) hover.hidden = true; });
 
@@ -248,9 +357,9 @@ function labelFor(el) {
 }
 function toggleMark(el) {
   const art = document.querySelector('.bk[data-sec]'); const p = prog(B.id); if (!art || !p) return;
-  const sec = art.dataset.sec, b = +el.dataset.b;
+  const sec = el.dataset.s || art.dataset.sec, b = +el.dataset.b;
   const ex = p.marks.find(m => m.sec === sec && m.b === b);
-  if (ex) { p.marks = p.marks.filter(m => m !== ex); el.classList.remove('bk-marked'); save(B.id, p, true); B.lastUndo = { k: 'marks', item: ex }; toast('Bookmark removed', bookUndo); }
+  if (ex) { p.marks = p.marks.filter(m => m !== ex); gone(p, ex.id); el.classList.remove('bk-marked'); save(B.id, p, true); B.lastUndo = { k: 'marks', item: ex }; toast('Bookmark removed', bookUndo); }
   else { const m = { id: uid('bm'), sec, b, label: labelFor(el), note: '', at: Date.now() }; p.marks.push(m); el.classList.add('bk-marked'); save(B.id, p, true); B.lastUndo = { k: 'marks', id: m.id }; toast('Bookmarked', bookUndo); }
   if (B.panel === 'saved') redraw();
 }
@@ -273,10 +382,10 @@ function addHighlight() {
   const txt = String(s).trim().slice(0, 600);
   let node = s.anchorNode; if (node && node.nodeType === 3) node = node.parentElement;
   const blk = node && node.closest('[data-b]');
-  const h = { id: uid('hl'), sec: art.dataset.sec, b: blk ? +blk.dataset.b : 0, text: txt, note: '', at: Date.now() };
-  p.hls.push(h); save(B.id, p, true); s.removeAllRanges(); selBtn.hidden = true;
+  const h = { id: uid('hl'), sec: (blk && blk.dataset.s) || art.dataset.sec, b: blk ? +blk.dataset.b : 0, text: txt, note: '', at: Date.now() };
+  p.hls.push(h); save(B.id, p, true); s.removeAllRanges(); if (selBtn) selBtn.hidden = true;
   B.lastUndo = { k: 'hls', id: h.id };
-  paintHighlights(art, p, art.dataset.sec); toast('Highlighted', bookUndo);
+  paintHighlights(art, p, art.dataset.web ? null : art.dataset.sec); toast('Highlighted', bookUndo);
   if (B.panel === 'saved') redraw();
 }
 
@@ -288,18 +397,25 @@ document.addEventListener('input', e => {
 });
 
 export const BA = {
+  bkStep(el) {
+    const [meta, bk] = getBook(B.id); if (!bk || !isWeb(bk)) return;
+    const secs = sections(bk); const i = Math.max(0, secs.findIndex(s => s.key === B.cur));
+    const n = secs[Math.min(secs.length - 1, Math.max(0, i + +el.dataset.d))]; if (!n) return;
+    const art = document.querySelector('.bk[data-sec]'); const t = art && webSecEl(art, n.key);
+    if (t) t.scrollIntoView({ block: 'start' });
+  },
   bkPanel() { B.panel = B.panel ? '' : 'toc'; keep('mph:bkpanel', B.panel); redraw(); },
   bkTab(el) { B.panel = el.dataset.t; keep('mph:bkpanel', B.panel); redraw(); },
   bkMarkTop() {
     const art = document.querySelector('.bk[data-sec]'); if (!art) return;
-    let cur = null; for (const el of art.querySelectorAll('[data-b]')) { if (el.getBoundingClientRect().bottom > 130) { cur = el; break; } }
+    const cur = topBlock(art);
     if (cur) toggleMark(cur);
   },
   bkResumeFrom(el, e) { e && e.preventDefault(); B.id = el.dataset.id; const p = prog(B.id); if (p && p.pos) { B.jump = { sec: p.pos.sec, b: p.pos.b }; location.hash = `#/book/${B.id}/${p.pos.sec}`; } else location.hash = `#/book/${B.id}`; },
   bkResume() { const p = prog(B.id); if (!p || !p.pos) return; B.jump = { sec: p.pos.sec, b: p.pos.b }; location.hash = `#/book/${B.id}/${p.pos.sec}`; },
   bkGo(el, e) { e && e.preventDefault(); B.jump = { sec: el.dataset.sec, b: +el.dataset.b }; const h = `#/book/${B.id}/${el.dataset.sec}`; if (location.hash === h) { redraw(); } else location.hash = h; if (innerWidth < 860) { B.panel = ''; keep('mph:bkpanel', ''); } },
   bkFind(el) { const sec = el.getAttribute('href').split('/').pop(); B.jump = { sec, b: -1, find: el.dataset.q }; },
-  bkDel(el) { const p = prog(B.id); if (!p) return; const k = el.dataset.k; const item = p[k].find(x => x.id === el.dataset.id); p[k] = p[k].filter(x => x.id !== el.dataset.id); save(B.id, p, true); B.lastUndo = { k, item }; toast(k === 'marks' ? 'Bookmark removed' : 'Highlight removed', bookUndo); redraw(); },
+  bkDel(el) { const p = prog(B.id); if (!p) return; const k = el.dataset.k; const item = p[k].find(x => x.id === el.dataset.id); p[k] = p[k].filter(x => x.id !== el.dataset.id); gone(p, el.dataset.id); save(B.id, p, true); B.lastUndo = { k, item }; toast(k === 'marks' ? 'Bookmark removed' : 'Highlight removed', bookUndo); redraw(); },
   bkQuiz(el) { const p = prog(B.id); if (!p) return; const sec = el.dataset.sec; p.quiz[sec] = p.quiz[sec] || {}; p.quiz[sec][+el.dataset.q] = +el.dataset.o; save(B.id, p, true); redraw(); },
   bkCat(el) { B.gcat = el.dataset.c; redraw(); },
   bkSim(el) { const p = prog(B.id); if (!p) return; p.check['sim' + el.dataset.i] = +el.dataset.o; save(B.id, p, true); redraw(); },
@@ -313,7 +429,52 @@ export const BC = {
 // Undo for the last bookmark or highlight change, used by the toast's Undo button.
 export function bookUndo() {
   const u = B.lastUndo; const p = B.id && prog(B.id); if (!u || !p) return false;
-  if (u.item) p[u.k].push(u.item); else p[u.k] = p[u.k].filter(x => x.id !== u.id);
+  if (u.item) { u.item.at = Date.now(); if (p.gone) delete p.gone[u.item.id]; p[u.k].push(u.item); } else { p[u.k] = p[u.k].filter(x => x.id !== u.id); gone(p, u.id); }
   save(B.id, p, true); B.lastUndo = null; redraw(); return true;
 }
 export const bookState = () => B;
+
+// Keyboard on the Mac: B bookmarks the paragraph at the top, H highlights the selection, arrows move between sections.
+document.addEventListener('keydown', e => {
+  const art = document.querySelector('.bk[data-sec]'); if (!art || e.metaKey || e.ctrlKey || e.altKey) return;
+  const a = document.activeElement; if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (k === 'b') { e.preventDefault(); BA.bkMarkTop(); }
+  else if (k === 'h' && String(getSelection()).trim().length > 2) { e.preventDefault(); addHighlight(); }
+  else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    const btn = document.querySelector(`.bk-bar a[aria-label="${e.key === 'ArrowRight' ? 'Next' : 'Previous'}"]`);
+    if (btn) { e.preventDefault(); location.hash = btn.getAttribute('href'); }
+  }
+});
+
+// LIBRARY: every book as a cover. Opening one shows its contents, saved places and Continue.
+const KIND = { study: 'Study book', web: 'Manual' };
+export function libraryView(uploads) {
+  const idx = catalog(redraw);
+  const head = `<div class="phead"><div><span class="eyebrow">Growth</span><h1 class="display" style="margin-top:10px">Library</h1><p class="muted">Your books and manuals. Private to your login, open offline, and every bookmark follows you between Mac and iPhone.</p></div></div>`;
+  if (!idx) return head + wait();
+  if (idx.__error) return head + `<div class="panel"><p class="muted">Sign in online once to unlock your books.</p></div>`;
+  const tiles = idx.books.map((b, i) => {
+    const bp = progress('book:' + b.id, redraw) || {};
+    const done = Object.keys(bp.done || {}).filter(k => k.startsWith('ch')).length;
+    const pct = Math.round(done / b.chapters * 100);
+    const saved = (bp.marks || []).length + (bp.hls || []).length;
+    const kind = b.id === 'dahua' ? 'Proposal' : KIND[b.kind] || 'Book';
+    return `<a class="lb-book tone-${esc(b.tone || 'green')}" href="#/book/${b.id}">
+      <span class="lb-cover"><span class="lb-n">${String(i + 1).padStart(2, '0')}</span><span class="lb-k">${esc(kind)}</span><b class="display">${esc(b.title)}</b><i class="lb-mark"></i></span>
+      <span class="lb-info"><small>${esc(b.sub)}</small><span class="meter"><i style="width:${pct}%"></i></span>
+      <span class="lb-st"><b>${bp.pos ? 'Continue' : 'Start'}</b><span>${pct}% · ${done} of ${b.chapters}${saved ? ' · ' + saved + ' saved' : ''}</span></span></span></a>`;
+  }).join('');
+  return head + `<div class="lb-shelf">${tiles}</div>${uploads || ''}`;
+}
+
+// Home: books with where you left off, most recent first.
+export function homeBooks() {
+  const idx = catalog(redraw);
+  if (!idx || idx.__error) return `<p class="empty">${idx ? 'Sign in online once to unlock your books.' : 'Opening your books'}</p>`;
+  const rows = idx.books.map(b => ({ b, p: progress('book:' + b.id, redraw) || {} })).sort((x, y) => ((y.p.pos || {}).at || 0) - ((x.p.pos || {}).at || 0));
+  return `<div class="continue-list">${rows.map(({ b, p }) => {
+    const done = Object.keys(p.done || {}).filter(k => k.startsWith('ch')).length; const pct = Math.round(done / b.chapters * 100);
+    return `<a class="doc" href="#/book/${b.id}" ${p.pos ? `data-act="bkResumeFrom" data-id="${b.id}"` : ''}><span class="bar"></span><span class="grow" style="min-width:0;flex:1"><span class="kind">${p.pos ? 'Continue' : 'Start'}</span><span class="dtitle" style="display:block">${esc(b.title)}</span></span><span class="faint" style="font-size:11px;white-space:nowrap">${pct}%</span></a>`;
+  }).join('')}</div>`;
+}

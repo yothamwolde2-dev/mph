@@ -1,3 +1,4 @@
+@layer app{
 @font-face{font-family:'Montserrat';font-style:normal;font-weight:400;font-display:swap;src:url(../fonts/montserrat-latin-400-normal.woff2) format('woff2')}
 @font-face{font-family:'Montserrat';font-style:normal;font-weight:500;font-display:swap;src:url(../fonts/montserrat-latin-500-normal.woff2) format('woff2')}
 @font-face{font-family:'Montserrat';font-style:normal;font-weight:600;font-display:swap;src:url(../fonts/montserrat-latin-600-normal.woff2) format('woff2')}
@@ -586,7 +587,8 @@ select.field{appearance:none;-webkit-appearance:none;padding-right:34px;backgrou
 .bk-next{display:flex;align-items:center;gap:14px;margin-top:40px;padding:22px;border-radius:var(--radius);background:var(--panel)}
 .bk-next b{flex:1;font-size:20px}
 .bk-next:hover{background:var(--panel-2)}
-.bk [data-b]{position:relative;scroll-margin-top:130px;transition:background .6s}
+.bk:not(.wb-art) [data-b]{position:relative;transition:background .6s}
+.bk [data-b]{scroll-margin-top:142px}
 .bk .bk-marked::before{content:'';position:absolute;left:-30px;top:4px;width:12px;height:18px;background:var(--green);clip-path:polygon(0 0,100% 0,100% 100%,50% 72%,0 100%)}
 .bk .bk-flash{background:rgba(57,180,74,.14);border-radius:4px}
 .bk-hover{position:absolute;z-index:20;width:30px;height:30px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;color:var(--ink-3);background:transparent}
@@ -665,3 +667,40 @@ select.field{appearance:none;-webkit-appearance:none;padding-right:34px;backgrou
   .bk-panel{bottom:calc(64px + env(safe-area-inset-bottom))}
 }
 .bk-hover[hidden],.bk-selbtn[hidden]{display:none!important}
+
+/* Library shelf: books as covers */
+.lb-shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:clamp(14px,2vw,26px)}
+.lb-book{display:flex;flex-direction:column;gap:16px;color:var(--ink)}
+.lb-cover{position:relative;display:flex;flex-direction:column;justify-content:flex-end;aspect-ratio:3/4;padding:24px 22px;border-radius:var(--radius);overflow:hidden;color:#fff;background:#000;transition:transform .35s var(--ease),box-shadow .35s var(--ease);box-shadow:0 1px 0 rgba(255,255,255,.04) inset}
+.lb-book:hover .lb-cover{transform:translateY(-4px);box-shadow:0 26px 50px rgba(0,0,0,.45)}
+.lb-cover b{position:relative;font-size:clamp(24px,2.3vw,30px);line-height:.98;max-width:9ch}
+.lb-k{position:absolute;top:22px;left:22px;font-size:10px;font-weight:800;letter-spacing:.24em;text-transform:uppercase;opacity:.8}
+.lb-n{position:absolute;right:-6px;top:-30px;font-family:var(--display);font-weight:900;font-size:150px;line-height:1;letter-spacing:-.06em;opacity:.08}
+.lb-mark{position:absolute;left:22px;bottom:22px;display:none}
+.lb-cover b::after{content:'';display:block;width:9px;height:9px;margin-top:16px;background:#39B44A}
+.tone-green .lb-cover{background:linear-gradient(160deg,#000 0%,#000 46%,#0B3312 76%,#1B6E27 100%)}
+.tone-coffee .lb-cover{background:radial-gradient(120% 90% at 100% 0%,#1B6E27 0%,rgba(27,110,39,0) 55%),linear-gradient(200deg,#141414,#000 60%)}
+.tone-light .lb-cover{background:#fff;color:#000}
+.tone-light .lb-cover .lb-n{opacity:.06}
+[data-theme="light"] .tone-light .lb-cover{box-shadow:0 0 0 1px rgba(0,0,0,.06) inset}
+.lb-info{display:flex;flex-direction:column;gap:10px;padding:0 2px}
+.lb-info small{color:var(--ink-2);font-size:12.5px;line-height:1.45}
+.lb-st{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;color:var(--ink-3);font-weight:600}
+.lb-st b{color:var(--ink);font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:10.5px}
+@media (max-width:620px){.lb-shelf{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.lb-cover{padding:16px}.lb-k{top:14px;left:16px;font-size:9px}.lb-cover b{font-size:19px}.lb-n{font-size:96px;top:-18px}.lb-info small{display:none}.lb-st{flex-direction:column;gap:2px}}
+.bk.wb-art{max-width:none;padding:0 0 40px;font-size:inherit;line-height:inherit;margin:0 calc(-1 * var(--pad));width:auto}
+.bk-wrap.web.with-panel{grid-template-columns:minmax(0,1fr)}
+@media (min-width:1081px){.bk-wrap.web .bk-panel{position:fixed;right:var(--pad);top:124px;width:330px;max-height:calc(100vh - 150px);z-index:12;box-shadow:0 30px 70px rgba(0,0,0,.55)}}
+.wbhost{position:relative;z-index:0;isolation:isolate;min-height:60vh;overflow-x:clip}
+.bk-bar{box-shadow:var(--pad) 0 0 var(--bg),calc(-1 * var(--pad)) 0 0 var(--bg)}
+}
+
+/* Web books: documents that keep their own design (Coffee manual, Dahua).
+   Everything above is in the "app" layer, so the book's own styles always win inside the book,
+   and MPH's styles never leak into it. These few rules reach into the book on purpose. */
+.wb-art .bk-marked,.wb-art .bk-flash{position:relative}
+.wb-art .bk-flash{outline:2px solid rgba(57,180,74,.55);outline-offset:4px}
+.wb-art .bk-marked::before{content:'';position:absolute;left:-26px;top:4px;width:12px;height:18px;background:#39B44A;clip-path:polygon(0 0,100% 0,100% 100%,50% 72%,0 100%)}
+.wb-art [data-b]{scroll-margin-top:142px}
+.wbhost section[id]{scroll-margin-top:132px}
+@media (max-width:720px){.wb-art .bk-marked::before{left:-14px;width:8px;height:14px}}

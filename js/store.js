@@ -1,11 +1,11 @@
 // MPH store: login, workspace state, undo and redo, saving and syncing with Supabase.
-import { uid, clone, DEFAULT_STATUSES, mkNode } from './core.js?v=0.2.0';
+import { uid, clone, DEFAULT_STATUSES, mkNode, mergeProg } from './core.js?v=0.3.0';
 
 export const CONFIG = {
   url: 'https://ibudcfsqsxjgxmngwrhk.supabase.co',
   key: 'sb_publishable_26qRWYPGawMiYPUPBsI1NA_HS2MuWOv',
   bucket: 'mph-files',
-  version: '0.2.0'
+  version: '0.3.0'
 };
 
 export const sb = window.supabase.createClient(CONFIG.url, CONFIG.key, {
@@ -257,12 +257,16 @@ function localDS(id) { try { return JSON.parse(localStorage.getItem(DS(id)) || '
 function keepDS(id, data, pending) { try { localStorage.setItem(DS(id), JSON.stringify({ data, pending, at: Date.now() })); } catch (e) {} }
 export async function readDocState(id) {
   const mine = localDS(id);
-  if (mine && mine.pending) { saveDocState(id, mine.data); return mine.data; }
   try {
     const { data, error } = await sb.from('mph_doc_state').select('data').eq('doc_id', id).maybeSingle();
     if (error) throw error;
-    const d = (data && data.data) || (mine ? mine.data : {});
-    keepDS(id, d, false); return d;
+    const remote = (data && data.data) || null;
+    if (!mine) { keepDS(id, remote || {}, false); return remote || {}; }
+    // Changes waiting on this device win their conflicts, otherwise the cloud copy is newer.
+    const d = mine.pending ? mergeProg(mine.data, remote) : mergeProg(remote, mine.data);
+    keepDS(id, d, !!mine.pending);
+    if (mine.pending) saveDocState(id, d);
+    return d;
   } catch (e) { return mine ? mine.data : {}; }
 }
 const stateTimers = {};
@@ -271,15 +275,25 @@ export function saveDocState(id, obj) {
   clearTimeout(stateTimers[id]);
   stateTimers[id] = setTimeout(async () => {
     try {
-      const { error } = await sb.from('mph_doc_state').upsert({ user_id: store.user.id, doc_id: id, data: obj, updated_at: new Date().toISOString() });
-      if (!error) keepDS(id, obj, false);
+      // Read the cloud copy first and merge, so a save here never wipes what another device added.
+      const { data: cur } = await sb.from('mph_doc_state').select('data').eq('doc_id', id).maybeSingle();
+      const local = localDS(id); const mineNow = local ? local.data : obj;
+      const merged = cur && cur.data ? mergeProg(mineNow, cur.data) : mineNow;
+      const { error } = await sb.from('mph_doc_state').upsert({ user_id: store.user.id, doc_id: id, data: merged, updated_at: new Date().toISOString() });
+      if (!error) {
+        const after = localDS(id);
+        // Only clear the waiting flag if nothing new was written while saving.
+        if (!after || after.at <= (local ? local.at : 0) || JSON.stringify(after.data) === JSON.stringify(mineNow)) keepDS(id, merged, false);
+        if (JSON.stringify(merged) !== JSON.stringify(mineNow)) window.dispatchEvent(new CustomEvent('mph:docstate', { detail: { id, data: merged } }));
+      }
     } catch (e) {}
   }, 600);
 }
 function flushDocStates() {
   if (!store.user) return;
-  Object.keys(localStorage).filter(k => k.startsWith('mph:ds:' + store.user.id + ':')).forEach(k => {
-    try { const v = JSON.parse(localStorage.getItem(k)); if (v && v.pending) saveDocState(k.split(':').pop(), v.data); } catch (e) {}
+  const pre = 'mph:ds:' + store.user.id + ':';
+  Object.keys(localStorage).filter(k => k.startsWith(pre)).forEach(k => {
+    try { const v = JSON.parse(localStorage.getItem(k)); if (v && v.pending) saveDocState(k.slice(pre.length), v.data); } catch (e) {}
   });
 }
 // Download every document once in the background so the whole library is ready offline.

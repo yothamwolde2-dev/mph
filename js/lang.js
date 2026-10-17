@@ -1,7 +1,7 @@
 // MPH Languages: Chinese (HSK 2, HSK 3; HSK 4 and 5 locked), German and Afaan Oromo to come.
 // Flashcards with spaced repetition, dialogs with audio, listening drills, grammar, words.
-import { esc, icon } from './core.js?v=0.2.0';
-import { catalog, peek, progress, saveProgress } from './content.js?v=0.2.0';
+import { esc, icon } from './core.js?v=0.3.0';
+import { catalog, peek, progress, saveProgress } from './content.js?v=0.3.0';
 
 const redraw = () => window.dispatchEvent(new Event('mph:redraw'));
 const toast = (t, undo) => window.dispatchEvent(new CustomEvent('mph:toast', { detail: { text: t, undo } }));
@@ -106,16 +106,9 @@ export function learningHub(extra) {
       <span><b class="display">${esc(l.name)}</b><small>${esc(sub)}</small></span>
       <span class="lx-meta">${l.locked ? icon('lock', 15) : esc(meta)}</span></a>`;
   }).join('');
-  const books = idx.books.map(b => {
-    const bp = progress('book:' + b.id, redraw) || {};
-    const done = Object.keys(bp.done || {}).filter(k => k.startsWith('ch')).length;
-    const pct = Math.round(done / b.chapters * 100);
-    return `<a class="lx-book" href="#/book/${b.id}"><span class="lx-spine"></span><span class="lx-bt"><span class="eyebrow">Study book</span><b class="display">${esc(b.title)}</b><small>${esc(b.sub)}</small></span>
-      <span class="lx-bm"><span class="meter"><i style="width:${pct}%"></i></span><small>${done} of ${b.chapters} chapters${bp.pos ? ' · Continue' : ''}</small></span></a>`;
-  }).join('');
-  return `<div class="phead"><div><span class="eyebrow">Growth</span><h1 class="display" style="margin-top:10px">Learning</h1><p class="muted">Your languages and study books. Everything opens instantly and works offline.</p></div></div>
+  return `<div class="phead"><div><span class="eyebrow">Growth</span><h1 class="display" style="margin-top:10px">Learning</h1><p class="muted">Languages, subjects and courses. Everything opens instantly and works offline. Books live in the Library.</p></div></div>
     <section class="lx-sec"><div class="ptitle"><i class="tick"></i><span class="eyebrow">Languages</span></div><div class="lx-tiles">${langs}</div></section>
-    <section class="lx-sec"><div class="ptitle"><i class="tick"></i><span class="eyebrow">Study books</span></div><div class="lx-books">${books}</div></section>${extra || ''}`;
+${extra || ''}`;
 }
 
 export function langView(parts) {
@@ -383,10 +376,6 @@ export function homeLearning() {
     const p = prog(l.id); let due = 0;
     (l.levels || []).filter(v => !v.locked).forEach(v => { const d = peek(v.file, v.v, redraw); if (d && !d.__error && p) d.words.forEach(w => { const c = p.cards[w.id + '|read']; if (c && c.due <= today) due++; }); });
     tiles.push(`<a class="doc" href="#/lang/${l.id}"><span class="bar"></span><div><span class="kind">Language</span><span class="dtitle">${esc(l.name)} ${esc(l.native)}</span></div><span class="dmeta"><span>${due ? due + ' cards due' : 'Practise today'}</span><span>${p ? streak(p) + ' day streak' : ''}</span></span></a>`);
-  });
-  idx.books.forEach(b => {
-    const bp = progress('book:' + b.id, redraw) || {}; const done = Object.keys(bp.done || {}).filter(k => k.startsWith('ch')).length;
-    tiles.push(`<a class="doc" href="#/book/${b.id}" ${bp.pos ? 'data-act="bkResumeFrom" data-id="' + b.id + '"' : ''}><span class="bar"></span><div><span class="kind">Study book</span><span class="dtitle">${esc(b.title)}</span></div><div><span class="dmeta"><span>${bp.pos ? 'Continue reading' : 'Start reading'}</span><span>${done}/${b.chapters}</span></span><span class="meter"><i style="width:${Math.round(done / b.chapters * 100)}%"></i></span></div></a>`);
   });
   return `<div class="docs">${tiles.join('')}</div>`;
 }

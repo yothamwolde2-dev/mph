@@ -1,11 +1,11 @@
 // MPH app: routing, rendering, actions, upload and the HTML reader.
-import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.2.0';
-import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG } from './store.js?v=0.2.0';
-import * as V from './views.js?v=0.2.0';
-import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.2.0';
-import { LA, learningHub, langView, stopSpeech } from './lang.js?v=0.2.0';
-import { bookView, afterRender as bookAfter, BA, BC, bookUndo } from './book.js?v=0.2.0';
-import { warmContent } from './content.js?v=0.2.0';
+import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.3.0';
+import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG } from './store.js?v=0.3.0';
+import * as V from './views.js?v=0.3.0';
+import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.3.0';
+import { LA, learningHub, langView, stopSpeech } from './lang.js?v=0.3.0';
+import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView } from './book.js?v=0.3.0';
+import { warmContent } from './content.js?v=0.3.0';
 
 const $app = document.getElementById('app');
 const $layer = document.getElementById('layer');
@@ -31,14 +31,14 @@ function render() {
   const base = r.split('/')[0];
   const inner = base === 'projects' ? V.projects(ui) : base === 'tasks' ? V.tasks(ui) : base === 'week' ? V.week(ui)
     : base === 'learning' ? learningHub() : base === 'lang' ? langView(r.split('/').slice(1)) : base === 'book' ? bookView(r.split('/').slice(1))
-    : base === 'library' ? V.shelf('library', ui) : base === 'settings' ? V.settings(ui) : V.home(ui);
+    : base === 'library' ? libraryView(store.state.docs.length ? V.shelf('library', ui, true) : '') : base === 'settings' ? V.settings(ui) : V.home(ui);
   const inner2 = base === 'home' ? installBanner() + inner : inner;
   const a = document.activeElement; const fk = a && a.dataset ? a.dataset.k : null;
   const sy = window.scrollY;
   $app.innerHTML = V.shell(r, inner2);
   if (r !== lastRoute) { const v = document.getElementById('view'); if (v) v.classList.add('enter'); lastRoute = r; }
-  window.scrollTo(0, sy);
   if (base === 'book') bookAfter();
+  window.scrollTo(0, sy);
   renderLayer();
   const want = ui.wantFocus || fk;
   if (want) { const el = document.querySelector(`[data-k="${CSS.escape(want)}"]`); if (el) { el.focus(); if (ui.wantFocus && el.select) el.select(); } }
@@ -347,4 +347,19 @@ sb.auth.onAuthStateChange((ev, session) => {
   else if (saved && !navigator.onLine) await startSession(saved);
   else render();
 })();
-if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
+// UPDATES: check for a new version whenever MPH comes to the front. When one is ready, MPH switches to it
+// at the next page change (never in the middle of reading or typing).
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  const had = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
+    setInterval(() => reg.update().catch(() => {}), 30 * 60000);
+  }).catch(() => {});
+  let updated = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!had || updated) return; updated = true;
+    const quiet = () => /^(home|projects|plan|settings|learning|library)?$/.test(route().split('/')[0]) && !(document.activeElement && /^(TEXTAREA|INPUT)$/.test(document.activeElement.tagName));
+    if (quiet() && !ui.modal && !ui.drawer) location.reload();
+    else window.addEventListener('hashchange', () => location.reload(), { once: true });
+  });
+}

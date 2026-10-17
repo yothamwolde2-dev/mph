@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0, 17 October 2026
+
+* Library is now your bookshelf: Corporate Management, the Coffee Sourcing and Export Intelligence manual and The Intelligent District (Dahua) as covers. Learning keeps languages and courses.
+* The Coffee manual and the Dahua proposal keep their own design and every interactive tool (origin explorer, price calculator, checklists, glossary, parking and traffic simulations), with MPH bookmarks, highlights, contents, search and resume on top. Checklists and forms you fill in are saved and synced.
+* Bookmarks, highlights and reading position now merge between Mac and iPhone instead of one device overwriting the other. A Mac that stays open picks up what you did on the iPhone when you come back to it.
+* Your place is saved the moment you leave the app.
+* Mac keyboard in books: B bookmarks, H highlights the selection, arrows move between sections.
+* MPH updates itself: a new version is picked up when you open the app and switched in at the next page change.
+* Home shows your books with Continue reading.
+
 ## 0.2.0, 17 October 2026
 
 * New Learning section, built natively for speed: no uploads needed, everything opens instantly and works offline.

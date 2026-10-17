@@ -20,14 +20,16 @@ A personal app for Yotham, used on an M1 Mac and an iPhone. It brings projects, 
 ## Files
 
 * `index.html` app entry, `manifest.webmanifest` and `sw.js` make it installable and open offline.
-* `css/app.css` all styling and design tokens (dark and light themes).
+* `css/app.css` all styling and design tokens (dark and light themes). Everything is inside `@layer app` so a web book's own styles always win inside the book; the few rules after the layer reach into books on purpose (ribbons, flash).
 * `js/core.js` helpers: dates, ids, icons, project tree logic, statuses.
 * `js/store.js` login, workspace state, undo and redo, saving, syncing, document files.
 * `js/views.js` every screen as a function returning markup.
 * `js/reader.js` the HTML reader: injects a small script into each document (storage and position bridge), bookmarks, highlights, contents, search, text size. Talks to the document only by postMessage.
 * `js/content.js` unlocks private content (courses, books) with the key from `mph_keys`, caches it, and stores course and book progress through `mph_doc_state` (keys `lang:<id>`, `book:<id>`).
 * `js/lang.js` Languages: course catalog, flashcards with spaced repetition (read, listen, recall, grammar), dialogs with device speech, listening drills, grammar, words.
-* `js/book.js` native study book reader: contents, sections, bookmarks (ribbons), resume to the paragraph, highlights, search, glossary, cases, skills, frameworks, templates, simulations.
+* `js/book.js` the book reader for everything in the Library: contents, bookmarks (ribbons), resume to the paragraph, highlights, search. Two kinds of book: study books built from data (Corporate Management) and web books (see below). Also the Library shelf and the Home "Continue reading" list.
+* `js/webrun.js` runs a web book: the document keeps its own design and interactive tools, inside one element MPH keeps alive. Its script runs in a sandbox (`with` scope): document queries stay inside the book, its storage is saved in the book progress (`ls`, synced), in-book links scroll the book, timers and key presses pause when the book is off screen.
+* `tools/webbook.py` converts a self contained HTML document into a web book: scopes its CSS to `.wb-<id>`, hides its own navigation chrome, keeps its script, extracts section text for search.
 * `content/*.bin` private content, locked with AES-256-GCM. `content/_sources.bin` is the locked source material.
 * `tools/build_content.py` builds and locks content; `tools/unpack_sources.py` unlocks the sources.
 * `js/app.js` routing, the action handlers (`A` for clicks, `C` for field changes), dialogs, menus and the reader.
@@ -51,6 +53,10 @@ Yotham does not upload documents in the app for courses and books. He sends them
 4. Extend `build_content.py` if a new course or book is added (catalog entry in `index`), then run `MPH_KEY=<key> python3 tools/build_content.py /tmp/mph-src`. Bump the item's `v` when its content changes.
 5. Commit only the `.bin` files and code. Never commit the unlocked sources.
 
+Library documents (finished HTML documents with their own design, like the Coffee manual and the Dahua proposal): save the file into the sources folder as `<id>.html`, add a small function next to `coffee()` and `dahua()` in `build_content.py` (title, subtitle, the selector of its sections, how to read each section's title, and the selectors of the document's own navigation to hide), add it to `books` in the index with `kind: 'web'` and a `tone` for its cover (`green`, `coffee`, `light`), then build. Test it in Playwright on desktop and phone sizes: bookmarks, resume, contents, search, and its interactive tools.
+
+Progress sync: book and course progress is merged between devices (`mergeProg` in core.js): lists with ids are joined, removals are kept in `gone`, entries with a time (`at`, `seen`) keep the newest. Give anything new that is saved in progress an `id` and an `at` so it merges correctly.
+
 Content is private: the repository is public, so anything unencrypted in it is public. Locked files are unreadable without the key, which only Yotham's login can read.
 
 Languages: Chinese has HSK 2 and HSK 3 open, HSK 4 and HSK 5 locked (open them when Yotham finishes HSK 3 and sends material). German and Afaan Oromo are placeholders, locked until material arrives.
@@ -70,5 +76,6 @@ Languages: Chinese has HSK 2 and HSK 3 open, HSK 4 and HSK 5 locked (open them w
 2. Planner (0.2): calendar month and week views, reminders with notifications on iPhone and Mac, recurring tasks, Trash with restore.
 3. Reports (0.3): weekly and monthly report for the boss as a designed PDF, choose scope and add comments.
 4. Learning (0.2, done): native Languages app (Chinese HSK 2 and 3) and native study book reader (Corporate Management Book 1), private locked content, offline.
-5. Next for Learning: HSK 4 and 5 when unlocked, German, Afaan Oromo, International Business, AI and Prompting as Yotham sends material.
-6. Later: per item records in the database for live merging between devices, uploading the Power Grotesk font, search across everything.
+5. Library (0.3, done): Library shelf with covers, Coffee manual and Dahua proposal as web books, bookmarks and resume synced and merged between Mac and iPhone, automatic updates.
+6. Next for Learning: HSK 4 and 5 when unlocked, German, Afaan Oromo, International Business, AI and Prompting as Yotham sends material.
+7. Later: per item records in the database for live merging between devices, uploading the Power Grotesk font, search across everything.

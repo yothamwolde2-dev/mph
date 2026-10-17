@@ -1,7 +1,8 @@
 // MPH views. Each returns markup; app.js wires the actions.
-import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.2.0';
-import { store, WIDGETS, CONFIG } from './store.js?v=0.2.0';
-import { homeLearning } from './lang.js?v=0.2.0';
+import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.3.0';
+import { store, WIDGETS, CONFIG } from './store.js?v=0.3.0';
+import { homeLearning } from './lang.js?v=0.3.0';
+import { homeBooks } from './book.js?v=0.3.0';
 
 export const NAV = [
   { group: 'Work', items: [
@@ -125,9 +126,7 @@ const W = {
       ${areas || `<p class="empty">No projects yet.</p>`}`;
   },
   continue() {
-    const docs = S().docs.slice().sort((a, b) => (b.opened || b.added) - (a.opened || a.added)).slice(0, 4);
-    return ptitle('Continue reading', 'Library', '#/library') + (docs.length ? `<div class="continue-list">${docs.map(d => `<button class="doc" data-act="openDoc" data-id="${d.id}"><span class="bar"></span><span class="grow" style="min-width:0;flex:1"><span class="kind">${esc(colName(d.col))}</span><span class="dtitle" style="display:block">${esc(d.title)}</span></span><span class="faint" style="font-size:11px;white-space:nowrap">${d.pct ? d.pct + '% · ' : ''}${esc(ago(d.opened))}</span></button>`).join('')}</div>`
-      : `<p class="empty">Your HTML documents appear here once you upload them.</p><div style="margin-top:12px"><a class="btn" href="#/learning">${icon('upload', 15)}Upload a document</a></div>`);
+    return ptitle('Continue reading', 'Library', '#/library') + homeBooks();
   },
   learning() {
     return ptitle('Learning', 'Open learning', '#/learning') + homeLearning();
@@ -262,7 +261,7 @@ export function week(ui) {
 }
 
 // LEARNING and LIBRARY
-export function shelf(section, ui) {
+export function shelf(section, ui, embedded) {
   const isL = section === 'learning';
   const cols = S().cols.filter(c => section === 'library' || c.section === section);
   const docs = S().docs.filter(d => section === 'library' || d.section === section);
@@ -271,10 +270,14 @@ export function shelf(section, ui) {
   if (loose.length) groups.push({ c: { id: '', name: 'Unsorted' }, list: loose });
   const head = `<div class="phead"><div><span class="eyebrow">Growth</span><h1 class="display" style="margin-top:10px">${isL ? 'Learning' : 'Library'}</h1><p class="muted">${isL ? 'Courses and study tools. Every document keeps its progress across your Mac and iPhone.' : 'Your HTML tools, references and documents, readable right here.'}</p></div>
     <div class="acts"><button class="btn" data-act="addCol" data-s="${section}">${icon('plus', 15)}${isL ? 'Course' : 'Collection'}</button><button class="btn primary" data-act="upload" data-s="${section}">${icon('upload', 15)}Upload HTML</button></div></div>`;
+  if (embedded) return `<section class="lx-sec" style="margin-top:44px"><div class="ptitle"><i class="tick"></i><span class="eyebrow">Your uploads</span></div>${shelfBody(section, groups, isL)}</section>`;
   if (!docs.length && !cols.length) {
     return head + `<div class="drop" data-drop="${section}"><h3 class="display">Bring your documents in</h3><p class="muted">Drop HTML files here, or choose them from your computer or phone.</p><div style="margin-top:18px"><button class="btn primary" data-act="upload" data-s="${section}">${icon('upload', 15)}Upload HTML</button></div></div>`;
   }
-  return head + `<div data-drop="${section}">${groups.map(({ c, list }) => `<section class="col">
+  return head + shelfBody(section, groups, isL);
+}
+function shelfBody(section, groups, isL) {
+  return `<div data-drop="${section}">${groups.map(({ c, list }) => `<section class="col">
       <div class="colhead">${c.id ? `<input class="inline" data-chg="colName" data-id="${c.id}" value="${esc(c.name)}" aria-label="Collection name">` : `<span class="display" style="font-size:20px">Unsorted</span>`}<span class="count">${list.length}</span><span style="flex:1"></span>${c.id ? `<button class="iconbtn" data-act="colMenu" data-id="${c.id}" aria-label="Collection options">${icon('dots', 16)}</button>` : ''}</div>
       ${list.length ? `<div class="docs">${list.map(docTile).join('')}</div>` : `<div class="drop" style="padding:26px"><p class="muted" style="font-size:13px">Empty. Upload into this ${isL ? 'course' : 'collection'}.</p><div style="margin-top:12px"><button class="btn sm" data-act="upload" data-s="${section}" data-c="${c.id}">${icon('upload', 14)}Upload</button></div></div>`}
     </section>`).join('')}</div>`;
@@ -336,7 +339,7 @@ export function syncLabel() {
   return { cls: v === 'saving' ? 'saving' : (v === 'offline' || v === 'error') ? 'off' : '', txt: v === 'saving' ? 'Saving' : v === 'offline' ? 'Offline, saved on this device' : v === 'error' ? 'Not synced, will retry' : 'Synced' };
 }
 export function shell(route, inner) {
-  const st = S(); const r0 = route.split('/')[0]; const r = (r0 === 'lang' || r0 === 'book') ? 'learning' : r0;
+  const st = S(); const r0 = route.split('/')[0]; const r = r0 === 'lang' ? 'learning' : r0 === 'book' ? 'library' : r0;
   const { cls: syncCls, txt: syncTxt } = syncLabel();
   const counts = { tasks: agenda().filter(a => !a.done && a.d && a.d <= today()).length, learning: st.docs.filter(d => d.section === 'learning').length, library: st.docs.filter(d => d.section === 'library').length };
   return `<div class="shell">

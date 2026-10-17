@@ -12,6 +12,7 @@ Each output file in content/ is: 12 byte IV + ciphertext (gzip of JSON) + 16 byt
 Without the key the files are unreadable.
 """
 import os, sys, json, gzip, base64, re
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 SRC = sys.argv[1] if len(sys.argv) > 1 else '.'
@@ -117,12 +118,48 @@ def book():
     return json.load(open(src('book_raw.json')))
 
 
+# Library books that keep their own design and interactive tools (see tools/webbook.py)
+from webbook import convert as web_convert, plain as web_plain
+
+
+def coffee():
+    html = open(src('coffee.html'), encoding='utf-8').read()
+    D = {}
+    for m in re.finditer(r'<script type="application/json" id="d\d">(.*?)</script>', html, re.S): D.update(json.loads(m.group(1)))
+    flat = lambda v: web_plain(json.dumps(v, ensure_ascii=False).replace('"', ' ').replace('[', ' ').replace(']', ' ').replace('{', ' ').replace('}', ' '))
+    where = {'c04': ['origins'], 'c05': ['proc'], 'c15': ['inc', 'incStages'], 'c18': ['docs'], 'c23': ['mkt'], 'c24': ['sup'], 'c25': ['buy', 'bdd'],
+             'c26': ['bq'], 'c27': ['neg'], 'c28': ['sim'], 'c30': ['offer'], 'c31': ['spec'], 'c32': ['g'], 'c34': ['prep']}
+    extra = """
+$P main{margin-left:0!important;min-width:0}
+$P{background:var(--paper);color:var(--ink);font-family:var(--f);font-size:16.5px;line-height:1.62}
+$P section.chapter,$P header.cover{scroll-margin-top:124px}
+$P .chapter.closed .ch-body{display:block!important}
+"""
+    return web_convert(html, 'coffee', 'Coffee Sourcing and Export Intelligence', 'Mansen manual · Buying Ethiopian green coffee and selling it to Europe, China and Russia',
+                       'section.chapter', lambda a: {'t': a.get('data-title'), 'part': a.get('data-part'), 'n': a.get('data-num')},
+                       ['.side', '.crumb', '.totop', '.ch-tools', '.results'], extra, lambda sid: ' '.join(flat(D[k]) for k in where.get(sid, []) if k in D))
+
+
+def dahua():
+    html = open(src('dahua.html'), encoding='utf-8').read()
+    extra = """
+$P{padding:0!important;background:#fff;color:#000;font-family:var(--font);font-size:16px;line-height:1.55;--hd:0px;--ft:0px}
+$P section.s{scroll-margin-top:124px}
+"""
+    return web_convert(html, 'dahua', 'The Intelligent District', 'Mansen and Dahua · Connected infrastructure, one operational picture',
+                       'section.s', lambda a: {'t': a.get('data-title'), 'part': 'Executive story' if a.get('data-story') == '1' else 'Deep dive'},
+                       ['header.band.top', 'footer.band.bot', '#index', '#back'], extra)
+
+
 if __name__ == '__main__':
     sizes = {}
     h2, h3, bk = hsk2(), hsk3(), book()
     sizes['zh-hsk2'] = lock('zh-hsk2', h2)
     sizes['zh-hsk3'] = lock('zh-hsk3', h3)
     sizes['book-cm1'] = lock('book-cm1', bk)
+    cf, dh = coffee(), dahua()
+    sizes['book-coffee'] = lock('book-coffee', cf)
+    sizes['book-dahua'] = lock('book-dahua', dh)
     index = {
         'v': 1,
         'languages': [
@@ -134,7 +171,9 @@ if __name__ == '__main__':
             {'id': 'de', 'name': 'German', 'native': 'Deutsch', 'voice': 'de-DE', 'locked': True, 'levels': []},
             {'id': 'om', 'name': 'Afaan Oromo', 'native': 'Afaan Oromoo', 'voice': 'om', 'locked': True, 'levels': []}],
         'books': [
-            {'id': 'cm1', 'title': 'Corporate Management', 'sub': 'Book 1 · How companies work, from structure to strategy', 'file': 'book-cm1', 'v': 1, 'size': sizes['book-cm1'], 'chapters': len(bk['ch'])}]
+            {'id': 'cm1', 'title': 'Corporate Management', 'sub': 'Book 1 · How companies work, from structure to strategy', 'file': 'book-cm1', 'v': 1, 'size': sizes['book-cm1'], 'chapters': len(bk['ch']), 'kind': 'study', 'tone': 'green'},
+            {'id': 'coffee', 'title': cf['title'], 'sub': cf['sub'], 'file': 'book-coffee', 'v': 1, 'size': sizes['book-coffee'], 'chapters': len(cf['sections']), 'kind': 'web', 'tone': 'coffee'},
+            {'id': 'dahua', 'title': dh['title'], 'sub': dh['sub'], 'file': 'book-dahua', 'v': 1, 'size': sizes['book-dahua'], 'chapters': len(dh['sections']), 'kind': 'web', 'tone': 'light'}]
     }
     lock('index', index)
     print(json.dumps(sizes), 'hsk2', len(h2['words']), len(h2['dialogs']), len(h2['grammar']), 'hsk3', len(h3['words']), len(h3['dialogs']), len(h3['grammar']), len(h3['passages']))
@@ -146,7 +185,7 @@ def pack_sources():
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode='w:gz') as t:
         for name in sorted(os.listdir(SRC)):
-            if name.endswith(('.txt', '_raw.json')):
+            if name.endswith(('.txt', '_raw.json', '.html')):
                 t.add(os.path.join(SRC, name), arcname=name)
     iv = os.urandom(12)
     with open(os.path.join(OUT, '_sources.bin'), 'wb') as f:

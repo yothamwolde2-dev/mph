@@ -120,3 +120,31 @@ const P = {
   sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'
 };
 export const icon = (n, s = 18) => `<svg class="ico" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || ''}</svg>`;
+
+// Merge two copies of saved progress (this device and the cloud) so nothing made on one device is lost on another.
+// Lists of items with an id are joined, items removed on either device stay removed (the "gone" list),
+// entries with a time ("at" or "seen") keep the newest, and for everything else the first copy wins.
+const stamp = o => (o && typeof o === 'object' && !Array.isArray(o)) ? Math.max(+o.at || 0, +o.seen || 0) : 0;
+export function mergeProg(first, second) {
+  if (!first || typeof first !== 'object') return second || {};
+  if (!second || typeof second !== 'object') return first;
+  const out = {};
+  const gone = Object.assign({}, second.gone || {}, first.gone || {});
+  for (const k of new Set([...Object.keys(second), ...Object.keys(first)])) {
+    if (k === 'gone') continue;
+    const x = first[k], y = second[k];
+    if (x === undefined) { out[k] = y; continue; }
+    if (y === undefined) { out[k] = x; continue; }
+    if (Array.isArray(x) && Array.isArray(y) && x.concat(y).every(o => o && typeof o === 'object' && o.id)) {
+      const m = new Map();
+      y.forEach(o => m.set(o.id, o));
+      x.forEach(o => { const p = m.get(o.id); m.set(o.id, !p || stamp(o) >= stamp(p) ? o : p); });
+      out[k] = [...m.values()];
+    } else if (x && y && typeof x === 'object' && typeof y === 'object' && !Array.isArray(x) && !Array.isArray(y)) {
+      out[k] = (stamp(x) || stamp(y)) ? (stamp(x) >= stamp(y) ? x : y) : mergeProg(x, y);
+    } else out[k] = x;
+  }
+  for (const k of Object.keys(out)) if (Array.isArray(out[k])) out[k] = out[k].filter(o => !(o && o.id && gone[o.id] && stamp(o) <= gone[o.id]));
+  if (Object.keys(gone).length) out.gone = gone;
+  return out;
+}
