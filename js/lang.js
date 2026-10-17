@@ -1,7 +1,7 @@
 // MPH Languages: Chinese (HSK 2, HSK 3; HSK 4 and 5 locked), German and Afaan Oromo to come.
 // Flashcards with spaced repetition, dialogs with audio, listening drills, grammar, words.
-import { esc, icon } from './core.js?v=0.3.0';
-import { catalog, peek, progress, saveProgress } from './content.js?v=0.3.0';
+import { esc, icon } from './core.js?v=0.4.0';
+import { catalog, peek, progress, saveProgress } from './content.js?v=0.4.0';
 
 const redraw = () => window.dispatchEvent(new Event('mph:redraw'));
 const toast = (t, undo) => window.dispatchEvent(new CustomEvent('mph:toast', { detail: { text: t, undo } }));

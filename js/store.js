@@ -1,11 +1,11 @@
 // MPH store: login, workspace state, undo and redo, saving and syncing with Supabase.
-import { uid, clone, DEFAULT_STATUSES, mkNode, mergeProg } from './core.js?v=0.3.0';
+import { uid, clone, DEFAULT_STATUSES, mkNode, mergeProg } from './core.js?v=0.4.0';
 
 export const CONFIG = {
   url: 'https://ibudcfsqsxjgxmngwrhk.supabase.co',
   key: 'sb_publishable_26qRWYPGawMiYPUPBsI1NA_HS2MuWOv',
   bucket: 'mph-files',
-  version: '0.3.0'
+  version: '0.4.0'
 };
 
 export const sb = window.supabase.createClient(CONFIG.url, CONFIG.key, {
@@ -16,7 +16,9 @@ export const BRAND_TEMPLATE = ['Logo', 'Slogan', 'Visual Identity', 'Brand Guide
 
 export const WIDGETS = [
   { id: 'today', name: 'Today' },
-  { id: 'goals', name: 'Weekly goals' },
+  { id: 'calendar', name: 'Calendar' },
+  { id: 'notes', name: 'Notes' },
+  { id: 'goals', name: 'Big 3 for the week' },
   { id: 'projects', name: 'Projects pulse' },
   { id: 'continue', name: 'Continue reading' },
   { id: 'learning', name: 'Learning shelf' }
@@ -32,6 +34,9 @@ export const blankState = () => ({
   areas: [],
   tasks: [],
   goals: {},
+  mgoals: {},
+  review: {},
+  notes: [],
   reflections: {},
   cols: [],
   docs: [],
@@ -43,7 +48,11 @@ function normalize(d) {
   const s = Object.assign(b, d || {});
   s.profile = Object.assign(b.profile, (d || {}).profile || {});
   s.home = Object.assign({ order: [], hidden: [] }, s.home);
+  // Calendar and Notes arrive next to Today the first time (0.4)
+  if (!s.home.v4) { s.home.order = s.home.order.filter(id => id !== 'calendar' && id !== 'notes'); const i = s.home.order.indexOf('today'); s.home.order.splice(i < 0 ? 0 : i + 1, 0, 'calendar', 'notes'); s.home.v4 = 1; }
   WIDGETS.forEach(w => { if (!s.home.order.includes(w.id)) s.home.order.push(w.id); });
+  s.mgoals = s.mgoals || {}; s.review = s.review || {}; s.notes = s.notes || [];
+  s.tasks.forEach(t => { t.d = t.d || ''; t.wk = t.wk || ''; t.star = !!t.star; });
   s.home.order = s.home.order.filter(id => WIDGETS.some(w => w.id === id));
   if (!Array.isArray(s.statuses) || !s.statuses.length) s.statuses = clone(DEFAULT_STATUSES);
   const fixNode = n => { n.k = n.k || []; n.n = n.n || []; n.r = n.r || []; n.s = n.s || ''; n.due = n.due || ''; n.pr = n.pr || ''; n.k.forEach(fixNode); };

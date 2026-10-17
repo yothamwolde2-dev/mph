@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0, 17 October 2026
+
+* New Plan page replaces Tasks and Week. It cascades from the month to the day: the month's focus (up to five outcomes), the Big 3 for the week (each can support a month goal), a to do list for the week, every day of the week with its tasks, reminders and project items due, and a weekly review (what went well, what got in the way, focus for next week) with the week's score.
+* Star up to three top priorities a day. Unfinished tasks from earlier days wait in Today with Move to today. Move any task to another day, to this week, or to next week from its menu, or drag it on the Mac. Tap a task's text to edit it.
+* Home: today's tasks with quick add, a month calendar (tap a day to plan it), and sticky notes in Mansen colours. Tapping MPH goes Home.
+* Projects: priority shows as a numbered badge (1 green, 2 white, 3 grey), click it to change. Due dates are optional. Sub items are light: status, add to plan, notes, reminders, delete. Every item has an Add to tasks button (Today, Tomorrow, This week); finishing the task marks the item Done.
+* Menu: Home, Projects, Plan, Learning, Library.
+* Delete buttons use a bin icon. Backup export includes reading and course progress.
+
 ## 0.3.0, 17 October 2026
 
 * Library is now your bookshelf: Corporate Management, the Coffee Sourcing and Export Intelligence manual and The Intelligent District (Dahua) as covers. Learning keeps languages and courses.

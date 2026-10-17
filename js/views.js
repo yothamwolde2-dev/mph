@@ -1,23 +1,23 @@
 // MPH views. Each returns markup; app.js wires the actions.
-import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.3.0';
-import { store, WIDGETS, CONFIG } from './store.js?v=0.3.0';
-import { homeLearning } from './lang.js?v=0.3.0';
-import { homeBooks } from './book.js?v=0.3.0';
+import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.4.0';
+import { store, WIDGETS, CONFIG } from './store.js?v=0.4.0';
+import { homeLearning } from './lang.js?v=0.4.0';
+import { homeBooks } from './book.js?v=0.4.0';
+import { HW, openToday, nodeInPlan } from './plan.js?v=0.4.0';
 
 export const NAV = [
   { group: 'Work', items: [
     { id: 'home', label: 'Home', ico: 'home' },
     { id: 'projects', label: 'Projects', ico: 'projects' },
-    { id: 'tasks', label: 'Tasks', ico: 'tasks' },
-    { id: 'week', label: 'Week', ico: 'week' }
+    { id: 'plan', label: 'Plan', ico: 'week' }
   ] },
   { group: 'Growth', items: [
     { id: 'learning', label: 'Learning', ico: 'learning' },
     { id: 'library', label: 'Library', ico: 'library' }
   ] }
 ];
-export const TABS = ['home', 'projects', 'tasks', 'learning', 'library'];
-const LABEL = { lang: 'Learning', book: 'Learning', home: 'Home', projects: 'Projects', tasks: 'Tasks', week: 'Week', learning: 'Learning', library: 'Library', settings: 'Settings', read: 'Reader' };
+export const TABS = ['home', 'projects', 'plan', 'learning', 'library'];
+const LABEL = { lang: 'Learning', book: 'Library', home: 'Home', projects: 'Projects', plan: 'Plan', learning: 'Learning', library: 'Library', settings: 'Settings', read: 'Reader' };
 
 const S = () => store.state;
 const stOf = key => S().statuses.find(s => s.key === key) || S().statuses[0];
@@ -44,7 +44,7 @@ function agendaRow(a, opts = {}) {
     <button class="check ${a.done ? 'on' : ''}" data-act="toggleAgenda" data-kind="${a.kind}" data-id="${a.id}" data-nid="${a.nid || ''}" aria-label="${a.done ? 'Mark not done' : 'Mark done'}">${a.done ? icon('check', 14) : ''}</button>
     <div class="grow" ${titleAct} style="${titleAct ? 'cursor:pointer' : ''}"><div class="title">${esc(a.x)}</div>${meta ? `<div class="meta">${meta}</div>` : ''}</div>
     ${chip}${opts.noDate ? '' : dchip}
-    ${a.kind === 'task' && opts.del ? `<button class="iconbtn" style="width:30px;height:30px" data-act="delTask" data-id="${a.id}" aria-label="Delete task">${icon('minus', 16)}</button>` : ''}
+    ${a.kind === 'task' && opts.del ? `<button class="iconbtn" style="width:30px;height:30px" data-act="delTask" data-id="${a.id}" aria-label="Delete task">${icon('trash', 16)}</button>` : ''}
   </div>`;
 }
 
@@ -77,7 +77,7 @@ export function home(ui) {
     <div><div class="date">${esc(fmtLong())} · Week ${w.week}</div>${heroText}</div>
     <div class="bottom">
       <div class="figures">
-        <div class="fig"><b class="num">${f.due}</b><span>Due today</span></div>
+        <div class="fig"><b class="num">${openToday()}</b><span>Open today</span></div>
         <div class="fig"><b class="num">${f.goalsDone}/${f.goals}</b><span>Week goals</span></div>
         <div class="fig"><b class="num">${f.pct}%</b><span>Projects</span></div>
       </div>
@@ -102,16 +102,13 @@ export function home(ui) {
 const ptitle = (label, link, href) => `<div class="ptitle"><i class="tick"></i><span class="eyebrow">${label}</span><span class="sp"></span>${link ? `<a class="link" href="${href}">${link}</a>` : ''}</div>`;
 
 const W = {
-  today() {
-    const t = today();
-    const items = agenda().filter(a => a.d && (a.d === t || (a.d < t && !a.done)))
-      .sort((a, b) => (a.done - b.done) || a.d.localeCompare(b.d));
-    return ptitle('Today', 'All tasks', '#/tasks') + (items.length ? items.slice(0, 7).map(a => agendaRow(a)).join('') : `<p class="empty">Nothing due today. Add a task above, or set due dates on your project items.</p>`);
-  },
+  today: HW.today,
+  calendar: HW.calendar,
+  notes: HW.notes,
   goals() {
     const k = weekKey(); const g = S().goals[k] || [];
     const done = g.filter(x => x.done).length; const pct = g.length ? Math.round(done / g.length * 100) : 0;
-    return ptitle('Weekly goals', 'Open week', '#/week') + `
+    return ptitle('Big 3 for the week', 'Open plan', '#/plan') + `
       <div class="goal-week"><b class="num">${done}/${g.length}</b><span class="faint" style="font-size:12px">${esc(weekRange(weekStart()))}</span></div>
       <div class="meter" style="margin-bottom:12px"><i style="width:${pct}%"></i></div>
       ${g.map(x => `<div class="row ${x.done ? 'done' : ''}"><button class="check ${x.done ? 'on' : ''}" data-act="goalToggle" data-w="${k}" data-id="${x.id}" aria-label="Toggle goal">${x.done ? icon('check', 14) : ''}</button><div class="grow"><div class="title">${esc(x.x)}</div></div></div>`).join('') || `<p class="empty">Set what this week must deliver.</p>`}
@@ -165,99 +162,60 @@ function area(a, i, ui) {
   </section>`;
 }
 
+const PRIO = { High: 1, Medium: 2, Low: 3 };
+const prioBadge = n => `<button class="prio p${PRIO[n.pr] || 0}" data-act="prioCycle" data-id="${n.id}" aria-label="Priority${n.pr ? ' ' + n.pr : ', none'}" title="Priority: ${n.pr || 'none'}. Click to change">${PRIO[n.pr] || ''}</button>`;
 function node(n, depth, ui) {
   const s = stOf(n.st); const has = n.k && n.k.length; const open = !!ui.open[n.id];
   const ls = has ? n.k.flatMap(leaves) : []; const p = has ? progress(n, S().statuses) : 0;
+  const sub = depth > 0;
   const metaBits = [];
   if (has) metaBits.push(`${ls.filter(l => l.st === 'Done').length} of ${ls.length} done`);
-  if (n.s) metaBits.push(esc(n.s));
+  if (n.s && !sub) metaBits.push(esc(n.s));
   if (n.due) metaBits.push('Due ' + esc(relDay(n.due)));
   if (n.n && n.n.length) metaBits.push(n.n.length + (n.n.length === 1 ? ' note' : ' notes'));
+  if ((n.r || []).some(r => !r.done)) metaBits.push('Reminder');
+  const inPlan = nodeInPlan(n.id);
   const opts = S().statuses.map(o => `<option value="${esc(o.key)}" ${o.key === n.st ? 'selected' : ''}>${esc(o.label)}</option>`).join('');
-  return `<div class="node" style="padding-left:${8 + depth * 22}px">
+  return `<div class="node ${sub ? 'sub' : 'proj'}" style="padding-left:${8 + depth * 22}px">
       ${has ? `<button class="tw ${open ? 'open' : ''}" data-act="toggle" data-id="${n.id}" aria-label="${open ? 'Collapse' : 'Expand'}">${icon('chev', 15)}</button>` : `<span class="tw"></span>`}
-      <i class="dot" style="background:${s.color}"></i>
+      ${sub ? `<i class="dot" style="background:${s.color}"></i>` : prioBadge(n)}
       <div class="nt" data-act="openNode" data-id="${n.id}"><b>${esc(n.t)}</b>${metaBits.length ? `<small>${metaBits.join(' · ')}</small>` : ''}</div>
       ${has ? `<span class="meter mini"><i style="width:${p}%"></i></span><span class="mini-pct num">${p}%</span>` : ''}
+      <button class="iconbtn plan-btn ${inPlan ? 'on' : ''}" data-act="addToTask" data-id="${n.id}" aria-label="${inPlan ? 'In your plan' : 'Add to tasks'}" title="${inPlan ? 'In your plan' : 'Add to Today or This week'}">${icon(inPlan ? 'check' : 'addtask', 15)}</button>
       <select class="stsel" data-chg="status" data-id="${n.id}" style="background:${s.color};color:${s.ink}" aria-label="Status">${opts}</select>
-      <span class="acts"><button class="iconbtn" style="width:30px;height:30px" data-act="addChild" data-id="${n.id}" aria-label="Add sub item">${icon('plus', 15)}</button><button class="iconbtn" style="width:30px;height:30px" data-act="delNode" data-id="${n.id}" aria-label="Delete">${icon('minus', 15)}</button></span>
+      <span class="acts">${sub ? '' : `<button class="iconbtn" style="width:30px;height:30px" data-act="addChild" data-id="${n.id}" aria-label="Add sub item">${icon('plus', 15)}</button>`}<button class="iconbtn" style="width:30px;height:30px" data-act="delNode" data-id="${n.id}" aria-label="Delete">${icon('trash', 15)}</button></span>
     </div>${has && open ? n.k.map(c => node(c, depth + 1, ui)).join('') : ''}`;
 }
 
 export function drawer(id) {
   const trail = pathTo(S().areas, id); if (!trail) return '';
-  const n = trail[trail.length - 1]; const isArea = trail.length === 1;
-  const sts = S().statuses;
-  return `<div class="scrim" data-act="closeDrawer"></div>
-  <aside class="drawer" role="dialog" aria-label="Item details">
+  const n = trail[trail.length - 1]; const isArea = trail.length === 1; const isSub = trail.length > 2;
+  const sts = S().statuses; const inPlan = nodeInPlan(n.id);
+  const statusBlock = isArea ? '' : `<div><span class="label">Status</span><div class="stgrid">${sts.map(s => `<button class="stbtn ${s.key === n.st ? 'on' : ''}" style="${s.key === n.st ? `background:${s.color};color:${s.ink}` : ''}" data-act="setStatus" data-id="${n.id}" data-st="${esc(s.key)}"><i class="dot" style="background:${s.key === n.st ? s.ink : s.color}"></i>${esc(s.label)}</button>`).join('')}</div></div>`;
+  const planBlock = isArea ? '' : `<div class="dr-plan"><button class="btn ${inPlan ? '' : 'primary'}" data-act="addToTask" data-id="${n.id}">${icon(inPlan ? 'check' : 'addtask', 15)}${inPlan ? 'In your plan, move it' : 'Add to tasks'}</button></div>`;
+  const notes = `<div><span class="label">Notes</span>
+        <div style="display:flex;flex-direction:column;gap:8px">${(n.n || []).map(o => `<div class="note">${esc(o.x)}<small>${new Date(o.ts).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</small><button class="x" data-act="delNote" data-id="${n.id}" data-o="${o.id}" aria-label="Delete note">${icon('x', 14)}</button></div>`).join('')}</div>
+        <textarea class="field" style="margin-top:10px" rows="2" data-k="note-${n.id}" id="note-${n.id}" placeholder="Write a note"></textarea>
+        <div style="margin-top:8px"><button class="btn" data-act="addNote" data-id="${n.id}">Add note</button></div></div>`;
+  const rems = `<div><span class="label">Reminders</span>
+        ${(n.r || []).map(r => `<div class="row"><span class="chip">${esc(fmtShort(r.d))}</span><div class="grow"><div class="title">${esc(r.x)}</div></div><button class="iconbtn" style="width:30px;height:30px" data-act="delRem" data-id="${n.id}" data-o="${r.id}" aria-label="Delete reminder">${icon('trash', 15)}</button></div>`).join('') || `<p class="empty">No reminders.</p>`}
+        <div class="two" style="margin-top:10px"><input class="field" id="rem-x-${n.id}" placeholder="Reminder"><input type="date" class="field" id="rem-d-${n.id}" value="${today()}"></div>
+        <div style="margin-top:8px"><button class="btn" data-act="addRem" data-id="${n.id}">Add reminder</button></div></div>`;
+  const del = `<div><button class="btn danger" data-act="delNode" data-id="${n.id}">${icon('trash', 15)}Delete ${isArea ? 'topic' : isSub ? 'sub item' : 'project'}</button></div>`;
+  const head = `<div class="scrim" data-act="closeDrawer"></div>
+  <aside class="drawer ${isSub ? 'light' : ''}" role="dialog" aria-label="Item details">
     <header><span class="path">${esc(trail.slice(0, -1).map(t => t.t).join(' / ') || 'Topic')}</span><button class="iconbtn" data-act="closeDrawer" aria-label="Close">${icon('x', 16)}</button></header>
     <div class="body">
       <div><textarea class="inline big" rows="2" style="resize:none;overflow:hidden" data-chg="rename" data-id="${n.id}" aria-label="Name">${esc(n.t)}</textarea>
-      <input class="inline muted" style="margin-top:6px" data-chg="desc" data-id="${n.id}" value="${esc(n.s)}" placeholder="Add a short description"></div>
-      ${isArea ? '' : `<div><span class="label">Status</span><div class="stgrid">${sts.map(s => `<button class="stbtn ${s.key === n.st ? 'on' : ''}" style="${s.key === n.st ? `background:${s.color};color:${s.ink}` : ''}" data-act="setStatus" data-id="${n.id}" data-st="${esc(s.key)}"><i class="dot" style="background:${s.key === n.st ? s.ink : s.color}"></i>${esc(s.label)}</button>`).join('')}</div></div>
-      <div class="two"><label><span class="label">Due date</span><input type="date" class="field" data-chg="due" data-id="${n.id}" value="${esc(n.due)}"></label>
-      <label><span class="label">Priority</span><select class="field" data-chg="prio" data-id="${n.id}">${['', 'Low', 'Medium', 'High'].map(p => `<option value="${p}" ${p === n.pr ? 'selected' : ''}>${p || 'None'}</option>`).join('')}</select></label></div>`}
-      <div><span class="label">Sub items</span>
+      ${isSub ? '' : `<input class="inline muted" style="margin-top:6px" data-chg="desc" data-id="${n.id}" value="${esc(n.s)}" placeholder="Add a short description">`}</div>`;
+  // Sub items stay light: status, plan, notes, reminders, delete.
+  if (isSub) return head + statusBlock + planBlock + notes + rems + del + `</div></aside>`;
+  const prio = isArea ? '' : `<div><span class="label">Priority</span><div class="prio-pick">${[['', 'None'], ['High', '1 High'], ['Medium', '2 Medium'], ['Low', '3 Low']].map(([v, l]) => `<button class="${(n.pr || '') === v ? 'on' : ''} p${PRIO[v] || 0}" data-act="prioSet" data-id="${n.id}" data-v="${v}">${l}</button>`).join('')}</div></div>
+      <div>${n.due ? `<label><span class="label">Due date</span><div class="addline" style="margin:0"><input type="date" class="field" data-chg="due" data-id="${n.id}" value="${esc(n.due)}"><button class="btn" data-act="dueClear" data-id="${n.id}">Clear</button></div></label>` : `<button class="btn sm ghost" data-act="dueShow" data-id="${n.id}">${icon('plus', 13)}Add a due date</button><input type="date" class="field" data-chg="due" data-id="${n.id}" id="due-${n.id}" hidden style="margin-top:8px">`}</div>`;
+  const subs = `<div><span class="label">Sub items</span>
         ${(n.k || []).map(c => { const cs = stOf(c.st); return `<div class="row"><i class="dot" style="background:${cs.color}"></i><div class="grow" data-act="openNode" data-id="${c.id}" style="cursor:pointer"><div class="title">${esc(c.t)}</div></div><span class="chip">${esc(cs.label)}</span></div>`; }).join('') || `<p class="empty">None yet.</p>`}
-        <div class="addline"><input class="field" data-k="sub-${n.id}" data-enter="addSub" data-id="${n.id}" placeholder="Add a sub item"><button class="btn" data-act="addSub" data-id="${n.id}">Add</button></div>
-      </div>
-      <div><span class="label">Notes</span>
-        <div style="display:flex;flex-direction:column;gap:8px">${(n.n || []).map(o => `<div class="note">${esc(o.x)}<small>${new Date(o.ts).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</small><button class="x" data-act="delNote" data-id="${n.id}" data-o="${o.id}" aria-label="Delete note">${icon('x', 14)}</button></div>`).join('')}</div>
-        <textarea class="field" style="margin-top:10px" rows="2" data-k="note-${n.id}" id="note-${n.id}" placeholder="Write a note"></textarea>
-        <div style="margin-top:8px"><button class="btn" data-act="addNote" data-id="${n.id}">Add note</button></div>
-      </div>
-      <div><span class="label">Reminders</span>
-        ${(n.r || []).map(r => `<div class="row"><span class="chip">${esc(fmtShort(r.d))}</span><div class="grow"><div class="title">${esc(r.x)}</div></div><button class="iconbtn" style="width:30px;height:30px" data-act="delRem" data-id="${n.id}" data-o="${r.id}" aria-label="Delete reminder">${icon('minus', 15)}</button></div>`).join('') || `<p class="empty">No reminders.</p>`}
-        <div class="two" style="margin-top:10px"><input class="field" id="rem-x-${n.id}" placeholder="Reminder"><input type="date" class="field" id="rem-d-${n.id}" value="${today()}"></div>
-        <div style="margin-top:8px"><button class="btn" data-act="addRem" data-id="${n.id}">Add reminder</button></div>
-      </div>
-      <div><button class="btn danger" data-act="delNode" data-id="${n.id}">${icon('minus', 15)}Delete ${isArea ? 'topic' : 'item'}</button></div>
-    </div>
-  </aside>`;
-}
-
-// TASKS
-export function tasks(ui) {
-  const t = today(); const ag = agenda();
-  const open = ag.filter(a => !a.done);
-  const groups = [
-    ['Overdue', open.filter(a => a.d && a.d < t)],
-    ['Today', open.filter(a => a.d === t)],
-    ['Upcoming', open.filter(a => a.d && a.d > t).sort((a, b) => a.d.localeCompare(b.d))],
-    ['Anytime', open.filter(a => !a.d)]
-  ];
-  const doneList = ag.filter(a => a.done && a.kind === 'task').sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 12);
-  return `<div class="phead"><div><span class="eyebrow">Work</span><h1 class="display" style="margin-top:10px">Tasks</h1><p class="muted">${open.length} open · tasks you add here and every dated item from your projects.</p></div>
-    <div class="acts"><a class="btn" href="#/week">${icon('week', 15)}This week</a></div></div>
-    <div class="panel" style="margin-bottom:14px"><div class="addline" style="margin:0;flex-wrap:wrap"><input class="field" style="flex:1 1 260px" data-k="task-x" id="task-x" data-enter="addTask" placeholder="What needs doing"><input type="date" class="field" style="width:170px" id="task-d" value="${esc(ui.taskDate ?? t)}"><button class="btn primary" data-act="addTask">${icon('plus', 15)}Add task</button></div></div>
-    <div class="cols2"><div>${groups.map(([name, list]) => list.length ? `<section class="panel sect" style="margin-bottom:14px">${ptitle(name + ' · ' + list.length)}${list.map(a => agendaRow(a, { del: true, noDate: name === 'Today' })).join('')}</section>` : '').join('') || `<section class="panel"><p class="empty">All clear. Nothing open.</p></section>`}</div>
-    <div><section class="panel">${ptitle('Completed')}${doneList.map(a => agendaRow(a, { del: true })).join('') || `<p class="empty">Completed tasks collect here.</p>`}</section></div></div>`;
-}
-
-// WEEK
-export function week(ui) {
-  const base = new Date(); base.setDate(base.getDate() + (ui.weekOffset || 0) * 7);
-  const k = weekKey(base); const ws = weekStart(base); const w = isoWeek(base);
-  const g = S().goals[k] || []; const done = g.filter(x => x.done).length; const pct = g.length ? Math.round(done / g.length * 100) : 0;
-  const start = ws.toISOString ? `${ws.getFullYear()}-${String(ws.getMonth() + 1).padStart(2, '0')}-${String(ws.getDate()).padStart(2, '0')}` : '';
-  const end = addDays(start, 6);
-  const due = agenda().filter(a => a.d && a.d >= start && a.d <= end).sort((a, b) => a.d.localeCompare(b.d));
-  return `<div class="phead"><div><span class="eyebrow">Work</span><h1 class="display" style="margin-top:10px">Week ${w.week}</h1><p class="muted">${esc(weekRange(ws))} ${w.year}</p></div>
-    <div class="acts weeknav"><button class="iconbtn" data-act="weekNav" data-d="-1" aria-label="Previous week">${icon('left', 16)}</button><button class="btn" data-act="weekNav" data-d="0">This week</button><button class="iconbtn" data-act="weekNav" data-d="1" aria-label="Next week">${icon('chev', 16)}</button></div></div>
-    <div class="cols2">
-      <section class="panel">${ptitle('Goals')}
-        <div class="goal-week"><b class="num">${done}/${g.length}</b><span class="faint" style="font-size:12px">${pct}% achieved</span></div>
-        <div class="meter" style="margin-bottom:12px"><i style="width:${pct}%"></i></div>
-        ${g.map((x, i) => `<div class="row ${x.done ? 'done' : ''}"><button class="check ${x.done ? 'on' : ''}" data-act="goalToggle" data-w="${k}" data-id="${x.id}" aria-label="Toggle goal">${x.done ? icon('check', 14) : ''}</button><div class="grow"><input class="inline title" data-chg="goalEdit" data-w="${k}" data-id="${x.id}" value="${esc(x.x)}" aria-label="Goal"></div>
-          <button class="iconbtn" style="width:30px;height:30px" data-act="goalMove" data-w="${k}" data-id="${x.id}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Move up">${icon('up', 15)}</button>
-          <button class="iconbtn" style="width:30px;height:30px" data-act="goalDel" data-w="${k}" data-id="${x.id}" aria-label="Delete goal">${icon('minus', 15)}</button></div>`).join('') || `<p class="empty">No goals set for this week yet.</p>`}
-        <div class="addline"><input class="field" data-k="goal-week" data-enter="goalAdd" data-w="${k}" placeholder="Add a goal"><button class="btn" data-act="goalAdd" data-w="${k}">Add</button></div>
-      </section>
-      <div>
-        <section class="panel" style="margin-bottom:14px">${ptitle('Due this week · ' + due.length)}${due.map(a => agendaRow(a)).join('') || `<p class="empty">Nothing dated this week.</p>`}</section>
-        <section class="panel">${ptitle('Reflection')}<textarea class="field" rows="5" data-chg="reflect" data-w="${k}" placeholder="What moved forward, what is blocked, what comes next">${esc(S().reflections[k] || '')}</textarea></section>
-      </div>
-    </div>`;
+        <div class="addline"><input class="field" data-k="sub-${n.id}" data-enter="addSub" data-id="${n.id}" placeholder="Add a sub item"><button class="btn" data-act="addSub" data-id="${n.id}">Add</button></div></div>`;
+  return head + statusBlock + prio + planBlock + subs + notes + rems + del + `</div></aside>`;
 }
 
 // LEARNING and LIBRARY
@@ -341,17 +299,16 @@ export function syncLabel() {
 export function shell(route, inner) {
   const st = S(); const r0 = route.split('/')[0]; const r = r0 === 'lang' ? 'learning' : r0 === 'book' ? 'library' : r0;
   const { cls: syncCls, txt: syncTxt } = syncLabel();
-  const counts = { tasks: agenda().filter(a => !a.done && a.d && a.d <= today()).length, learning: st.docs.filter(d => d.section === 'learning').length, library: st.docs.filter(d => d.section === 'library').length };
+  const counts = { plan: openToday() };
   return `<div class="shell">
-    <aside class="side"><div class="brand"><b>MPH</b><i></i></div>
+    <aside class="side"><a class="brand" href="#/home" aria-label="MPH Home"><b>MPH</b><i></i></a>
       ${NAV.map(g => `<div class="navgroup"><span class="eyebrow">${g.group}</span>${g.items.map(it => `<a class="navlink ${r === it.id || (r === 'read' && false) ? 'on' : ''}" href="#/${it.id}">${icon(it.ico)}${it.label}${counts[it.id] ? `<span class="count">${counts[it.id]}</span>` : ''}</a>`).join('')}</div>`).join('')}
       <div class="side-foot"><a class="navlink ${r === 'settings' ? 'on' : ''}" href="#/settings" style="padding-left:0">${icon('settings')}Settings</a><span class="sync ${syncCls}"><i></i>${syncTxt}</span></div>
     </aside>
     <div class="main">
-      <div class="topbar"><span class="mbrand"><b>MPH</b><i></i></span><span class="crumb">${esc(LABEL[r] || '')}</span><span class="sp"></span>
+      <div class="topbar"><a class="mbrand" href="#/home" aria-label="MPH Home"><b>MPH</b><i></i></a><span class="crumb">${esc(LABEL[r] || '')}</span><span class="sp"></span>
         <button class="iconbtn" data-act="undo" ${store.past.length ? '' : 'disabled'} aria-label="Undo" title="Undo (Cmd Z)">${icon('undo', 17)}</button>
         <button class="iconbtn" data-act="redo" ${store.future.length ? '' : 'disabled'} aria-label="Redo" title="Redo (Cmd Shift Z)">${icon('redo', 17)}</button>
-        <a class="iconbtn mobile-only" href="#/week" aria-label="Week">${icon('week', 17)}</a>
         <a class="iconbtn mobile-only" href="#/settings" aria-label="Settings">${icon('settings', 17)}</a>
       </div>
       <main class="view" id="view">${inner}</main>

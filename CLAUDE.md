@@ -23,7 +23,8 @@ A personal app for Yotham, used on an M1 Mac and an iPhone. It brings projects, 
 * `css/app.css` all styling and design tokens (dark and light themes). Everything is inside `@layer app` so a web book's own styles always win inside the book; the few rules after the layer reach into books on purpose (ribbons, flash).
 * `js/core.js` helpers: dates, ids, icons, project tree logic, statuses.
 * `js/store.js` login, workspace state, undo and redo, saving, syncing, document files.
-* `js/views.js` every screen as a function returning markup.
+* `js/views.js` Home, Projects, Library uploads, Settings, the shell (menu) and login, as functions returning markup.
+* `js/plan.js` the Plan page (month focus `mgoals[YYYY-MM]`, Big 3 `goals[week]`, tasks, days, review `review[week]`), the Home widgets Today, Calendar and Notes, task menus and drag and drop. Tasks: `{id, x, d (day or empty), wk (week key when planned for the week without a day), star, done, at, src (project item id)}`.
 * `js/reader.js` the HTML reader: injects a small script into each document (storage and position bridge), bookmarks, highlights, contents, search, text size. Talks to the document only by postMessage.
 * `js/content.js` unlocks private content (courses, books) with the key from `mph_keys`, caches it, and stores course and book progress through `mph_doc_state` (keys `lang:<id>`, `book:<id>`).
 * `js/lang.js` Languages: course catalog, flashcards with spaced repetition (read, listen, recall, grammar), dialogs with device speech, listening drills, grammar, words.
@@ -40,7 +41,8 @@ A personal app for Yotham, used on an M1 Mac and an iPhone. It brings projects, 
 * Every change to the workspace goes through `mutate(fn, key)` so it can be undone. Use `touch(fn)` only for things that should not be undoable (for example "last opened").
 * Click actions use `data-act="name"` and live in `A`; field changes use `data-chg="name"` and live in `C`; Enter in a field uses `data-enter="name"`.
 * New home widgets: add to `WIDGETS` in `store.js` and a renderer in `W` in `views.js`.
-* New screens: add a view function, a route in `render()` and an entry in `NAV`.
+* New screens: add a view function, a route in `render()` and an entry in `NAV` (and `TABS` for the iPhone tab bar, five at most).
+* Never use a minus sign or dash as an icon for delete; use `trash`.
 * Bump `CONFIG.version`, every `?v=` query (index.html, the imports in js files, sw.js) and the cache name in `sw.js` on every release so devices pick up the new version. Add a line to `CHANGELOG.md`.
 
 ## Private content workflow (how Yotham's documents get into MPH)
@@ -73,9 +75,10 @@ Languages: Chinese has HSK 2 and HSK 3 open, HSK 4 and HSK 5 locked (open them w
 ## Roadmap
 
 1. Foundation (0.1): Home, Projects, Tasks, Week, Learning, Library with HTML reader, Settings, undo and redo, sync. Done.
-2. Planner (0.2): calendar month and week views, reminders with notifications on iPhone and Mac, recurring tasks, Trash with restore.
+2. Planner: reminders with notifications on iPhone and Mac, recurring tasks, Trash with restore (still to do).
 3. Reports (0.3): weekly and monthly report for the boss as a designed PDF, choose scope and add comments.
 4. Learning (0.2, done): native Languages app (Chinese HSK 2 and 3) and native study book reader (Corporate Management Book 1), private locked content, offline.
-5. Library (0.3, done): Library shelf with covers, Coffee manual and Dahua proposal as web books, bookmarks and resume synced and merged between Mac and iPhone, automatic updates.
-6. Next for Learning: HSK 4 and 5 when unlocked, German, Afaan Oromo, International Business, AI and Prompting as Yotham sends material.
-7. Later: per item records in the database for live merging between devices, uploading the Power Grotesk font, search across everything.
+5. Plan (0.4, done): Plan page with month, week and day cascade, Home calendar and notes, lighter Projects with priority badges and add to tasks.
+6. Library (0.3, done): Library shelf with covers, Coffee manual and Dahua proposal as web books, bookmarks and resume synced and merged between Mac and iPhone, automatic updates.
+7. Next for Learning: HSK 4 and 5 when unlocked, German, Afaan Oromo, International Business, AI and Prompting as Yotham sends material.
+8. Later: per item records in the database for live merging between devices, uploading the Power Grotesk font, search across everything.

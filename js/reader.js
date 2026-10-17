@@ -1,9 +1,9 @@
 // MPH reader: opens an uploaded HTML document in a sandbox and adds reading tools around it.
 // Resume position, bookmarks, highlights with notes, contents, search, text size, progress, focus mode.
 // The document talks to MPH only through postMessage, so it can never reach your login or data.
-import { esc, icon, uid } from './core.js?v=0.3.0';
-import { store, mutate, touch, readDoc, readDocState, saveDocState } from './store.js?v=0.3.0';
-import { colName } from './views.js?v=0.3.0';
+import { esc, icon, uid } from './core.js?v=0.4.0';
+import { store, mutate, touch, readDoc, readDocState, saveDocState } from './store.js?v=0.4.0';
+import { colName } from './views.js?v=0.4.0';
 
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
 const keep = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
@@ -132,12 +132,12 @@ function panel(d) {
   if (R.panel === 'marks') body = (bm.length ? bm.slice().sort((a, b) => a.pct - b.pct).map(m => `<div class="rmark">
       <button class="rjump" data-act="rGo" data-m="${m.id}"><span class="rp num">${m.pct}%</span><span class="rl">${esc(m.label)}</span><small>${when(m.at)}</small></button>
       <input class="inline" data-chg="rNote" data-m="${m.id}" value="${esc(m.note || '')}" placeholder="Add a note">
-      <button class="iconbtn" data-act="rDel" data-m="${m.id}" aria-label="Delete bookmark">${icon('minus', 15)}</button></div>`).join('') : `<p class="empty">No bookmarks yet. Tap the bookmark button to save your place.</p>`)
+      <button class="iconbtn" data-act="rDel" data-m="${m.id}" aria-label="Delete bookmark">${icon('trash', 15)}</button></div>`).join('') : `<p class="empty">No bookmarks yet. Tap the bookmark button to save your place.</p>`)
     + `<div style="margin-top:14px"><button class="btn sm" data-act="rMark">${icon('bookmark', 14)}Bookmark this place</button></div>`;
   if (R.panel === 'hl') body = hl.length ? hl.slice().sort((a, b) => a.pct - b.pct).map(m => `<div class="rmark hl">
       <button class="rjump" data-act="rGo" data-m="${m.id}"><span class="rq">${esc(m.text)}</span><small>${m.pct}% · ${when(m.at)}</small></button>
       <input class="inline" data-chg="rNote" data-m="${m.id}" value="${esc(m.note || '')}" placeholder="Add a note">
-      <button class="iconbtn" data-act="rDel" data-m="${m.id}" aria-label="Delete highlight">${icon('minus', 15)}</button></div>`).join('') : `<p class="empty">Select text in the document, then tap Highlight. Your highlights and notes collect here.</p>`;
+      <button class="iconbtn" data-act="rDel" data-m="${m.id}" aria-label="Delete highlight">${icon('trash', 15)}</button></div>`).join('') : `<p class="empty">Select text in the document, then tap Highlight. Your highlights and notes collect here.</p>`;
   return `<div class="rtabs">${tab('toc', 'Contents')}${tab('marks', 'Bookmarks', bm.length)}${tab('hl', 'Highlights', hl.length)}<button class="iconbtn" data-act="rPanel" data-p="" aria-label="Close panel">${icon('x', 15)}</button></div><div class="rlist">${body}</div>`;
 }
 export function refresh() {

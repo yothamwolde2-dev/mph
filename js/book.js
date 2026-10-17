@@ -1,7 +1,7 @@
 // MPH study books. Rendered natively (no iframe) so bookmarks, resume and highlights are exact.
-import { esc, icon, uid } from './core.js?v=0.3.0';
-import { catalog, peek, progress, saveProgress } from './content.js?v=0.3.0';
-import { webHost, startHost } from './webrun.js?v=0.3.0';
+import { esc, icon, uid } from './core.js?v=0.4.0';
+import { catalog, peek, progress, saveProgress } from './content.js?v=0.4.0';
+import { webHost, startHost } from './webrun.js?v=0.4.0';
 
 const redraw = () => window.dispatchEvent(new Event('mph:redraw'));
 const toast = (t, undo) => window.dispatchEvent(new CustomEvent('mph:toast', { detail: { text: t, undo } }));
@@ -134,8 +134,8 @@ function cover(id, meta, bk, p, secs) {
 
 function savedList(id, p, secs, cur) {
   const name = k => (secs.find(s => s.key === k) || {}).t || '';
-  const marks = p.marks.slice().sort((a, b) => b.at - a.at).map(m => `<div class="bk-sv"><button data-act="bkGo" data-sec="${m.sec}" data-b="${m.b}">${icon('ribbon', 15)}<span><b>${esc(m.label)}</b><small>${esc(name(m.sec))}</small></span></button><input class="inline" data-chg="bkNote" data-k="marks" data-id="${m.id}" value="${esc(m.note || '')}" placeholder="Add a note"><button class="iconbtn" data-act="bkDel" data-k="marks" data-id="${m.id}" aria-label="Remove bookmark">${icon('minus', 14)}</button></div>`).join('');
-  const hls = p.hls.slice().sort((a, b) => b.at - a.at).map(h => `<div class="bk-sv hl"><button data-act="bkGo" data-sec="${h.sec}" data-b="${h.b}"><span><b class="bk-quote">${esc(h.text)}</b><small>${esc(name(h.sec))}</small></span></button><input class="inline" data-chg="bkNote" data-k="hls" data-id="${h.id}" value="${esc(h.note || '')}" placeholder="Add a note"><button class="iconbtn" data-act="bkDel" data-k="hls" data-id="${h.id}" aria-label="Remove highlight">${icon('minus', 14)}</button></div>`).join('');
+  const marks = p.marks.slice().sort((a, b) => b.at - a.at).map(m => `<div class="bk-sv"><button data-act="bkGo" data-sec="${m.sec}" data-b="${m.b}">${icon('ribbon', 15)}<span><b>${esc(m.label)}</b><small>${esc(name(m.sec))}</small></span></button><input class="inline" data-chg="bkNote" data-k="marks" data-id="${m.id}" value="${esc(m.note || '')}" placeholder="Add a note"><button class="iconbtn" data-act="bkDel" data-k="marks" data-id="${m.id}" aria-label="Remove bookmark">${icon('trash', 14)}</button></div>`).join('');
+  const hls = p.hls.slice().sort((a, b) => b.at - a.at).map(h => `<div class="bk-sv hl"><button data-act="bkGo" data-sec="${h.sec}" data-b="${h.b}"><span><b class="bk-quote">${esc(h.text)}</b><small>${esc(name(h.sec))}</small></span></button><input class="inline" data-chg="bkNote" data-k="hls" data-id="${h.id}" value="${esc(h.note || '')}" placeholder="Add a note"><button class="iconbtn" data-act="bkDel" data-k="hls" data-id="${h.id}" aria-label="Remove highlight">${icon('trash', 14)}</button></div>`).join('');
   return `${marks ? `<span class="eyebrow">Bookmarks</span>${marks}` : ''}${hls ? `<span class="eyebrow" style="margin-top:14px;display:block">Highlights</span>${hls}` : ''}`;
 }
 

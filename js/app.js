@@ -1,11 +1,12 @@
 // MPH app: routing, rendering, actions, upload and the HTML reader.
-import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.3.0';
-import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG } from './store.js?v=0.3.0';
-import * as V from './views.js?v=0.3.0';
-import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.3.0';
-import { LA, learningHub, langView, stopSpeech } from './lang.js?v=0.3.0';
-import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView } from './book.js?v=0.3.0';
-import { warmContent } from './content.js?v=0.3.0';
+import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.4.0';
+import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG } from './store.js?v=0.4.0';
+import * as V from './views.js?v=0.4.0';
+import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.4.0';
+import { LA, learningHub, langView, stopSpeech } from './lang.js?v=0.4.0';
+import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView } from './book.js?v=0.4.0';
+import { warmContent } from './content.js?v=0.4.0';
+import { planView, PA, PC, taskMenu, addTaskMenu } from './plan.js?v=0.4.0';
 
 const $app = document.getElementById('app');
 const $layer = document.getElementById('layer');
@@ -29,7 +30,8 @@ function render() {
   if (r.startsWith('read/')) { const id = r.slice(5); const same = R.id === id && document.querySelector('.reader'); mountReader(id, V.shell('read', ''), $app); if (same) syncHl(); renderLayer(); return; }
   leaveReader();
   const base = r.split('/')[0];
-  const inner = base === 'projects' ? V.projects(ui) : base === 'tasks' ? V.tasks(ui) : base === 'week' ? V.week(ui)
+  if (base === 'tasks' || base === 'week') { location.replace('#/plan'); return; }
+  const inner = base === 'projects' ? V.projects(ui) : base === 'plan' ? planView()
     : base === 'learning' ? learningHub() : base === 'lang' ? langView(r.split('/').slice(1)) : base === 'book' ? bookView(r.split('/').slice(1))
     : base === 'library' ? libraryView(store.state.docs.length ? V.shelf('library', ui, true) : '') : base === 'settings' ? V.settings(ui) : V.home(ui);
   const inner2 = base === 'home' ? installBanner() + inner : inner;
@@ -100,7 +102,7 @@ const A = {
   customize() { ui.customize = !ui.customize; render(); },
   wMove(el) { const id = el.dataset.id, d = +el.dataset.d; mutate(s => { const o = s.home.order, i = o.indexOf(id), j = i + d; if (j < 0 || j >= o.length) return; [o[i], o[j]] = [o[j], o[i]]; }); },
   wToggle(el) { const id = el.dataset.id; mutate(s => { const h = s.home.hidden; const i = h.indexOf(id); i >= 0 ? h.splice(i, 1) : h.push(id); }); },
-  quickAdd(el) { const inp = document.querySelector('[data-k="quick"]'); const x = inp.value.trim(); if (!x) return; ui.wantFocus = 'quick'; mutate(s => s.tasks.push({ id: uid('t'), x, d: today(), done: false, at: Date.now() })); toast('Added to today'); },
+  quickAdd(el) { const inp = document.querySelector('[data-k="quick"]'); const x = inp.value.trim(); if (!x) return; ui.wantFocus = 'quick'; mutate(s => s.tasks.push({ id: uid('t'), x, d: today(), wk: '', star: false, done: false, at: Date.now() })); toast('Added to today'); },
   addTask() { const x = document.getElementById('task-x').value.trim(); const d = document.getElementById('task-d').value; if (!x) return; ui.taskDate = d; ui.wantFocus = 'task-x'; mutate(s => s.tasks.push({ id: uid('t'), x, d, done: false, at: Date.now() })); },
   delTask(el) { mutate(s => { s.tasks = s.tasks.filter(t => t.id !== el.dataset.id); }); toast('Task deleted', true); },
   toggleAgenda(el) {
@@ -136,6 +138,10 @@ const A = {
   },
   openNode(el) { ui.drawer = el.dataset.id; renderLayer(); },
   closeDrawer() { ui.drawer = null; renderLayer(); },
+  prioCycle(el) { const order = ['', 'High', 'Medium', 'Low']; mutate(s => { const f = nodeIn(s, el.dataset.id); if (f) f.node.pr = order[(order.indexOf(f.node.pr || '') + 1) % 4]; }); },
+  prioSet(el) { mutate(s => { const f = nodeIn(s, el.dataset.id); if (f) f.node.pr = el.dataset.v; }); },
+  dueShow(el) { el.hidden = true; const i = document.getElementById('due-' + el.dataset.id); if (i) { i.hidden = false; try { i.showPicker ? i.showPicker() : i.focus(); } catch (e) { i.focus(); } } },
+  dueClear(el) { mutate(s => { const f = nodeIn(s, el.dataset.id); if (f) f.node.due = ''; }); },
   setStatus(el) { mutate(s => { const f = nodeIn(s, el.dataset.id); if (f) f.node.st = el.dataset.st; }); },
   addNote(el) { const t = document.getElementById('note-' + el.dataset.id); const x = t.value.trim(); if (!x) return; mutate(s => { const f = nodeIn(s, el.dataset.id); if (f) f.node.n.push({ id: uid('o'), x, ts: Date.now() }); }); },
   delNote(el) { mutate(s => { const f = nodeIn(s, el.dataset.id); if (f) f.node.n = f.node.n.filter(o => o.id !== el.dataset.o); }); toast('Note deleted', true); },
@@ -160,7 +166,10 @@ const A = {
   closeMenu() { ui.menu = null; renderLayer(); },
   async importPortfolio() { const n = await importPortfolio(); toast(n ? `Brought in ${n} topics from your Work Portfolio` : 'Everything from your Work Portfolio is already here'); },
   exportBackup() {
-    const b = new Blob([JSON.stringify({ app: 'MPH', version: CONFIG.version, at: new Date().toISOString(), state: S() }, null, 2)], { type: 'application/json' });
+    // Everything: the workspace plus reading and course progress kept on this device.
+    const progress = {}; const pre = 'mph:ds:' + (store.user ? store.user.id : '') + ':';
+    Object.keys(localStorage).filter(k => k.startsWith(pre)).forEach(k => { try { progress[k.slice(pre.length)] = JSON.parse(localStorage.getItem(k)).data; } catch (e) {} });
+    const b = new Blob([JSON.stringify({ app: 'MPH', version: CONFIG.version, at: new Date().toISOString(), state: S(), progress }, null, 2)], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `mph-backup-${today()}.json`; document.body.appendChild(a); a.click(); a.remove();
   },
   theme(el) { mutate(s => { s.theme = el.dataset.v; }); },
@@ -213,7 +222,7 @@ const C = {
   status(el) { mutate(s => { const f = nodeIn(s, el.dataset.id); if (f) f.node.st = el.value; }); },
   due(el) { mutate(s => { const f = nodeIn(s, el.dataset.id); if (f) f.node.due = el.value; }); },
   prio(el) { mutate(s => { const f = nodeIn(s, el.dataset.id); if (f) f.node.pr = el.value; }); },
-  goalEdit(el) { const v = el.value.trim(); mutate(s => { const g = (s.goals[el.dataset.w] || []).find(g => g.id === el.dataset.id); if (g && v) g.x = v; }); },
+  goalEdit(el) { const v = el.value.trim(); if (!v) return render(); mutate(s => { const g = (s.goals[el.dataset.w] || []).find(g => g.id === el.dataset.id); if (g && v) g.x = v; }); },
   reflect(el) { mutate(s => { s.reflections[el.dataset.w] = el.value; }, 'rf' + el.dataset.w); },
   statusLabel(el) { const v = el.value.trim(); if (!v) return render(); mutate(s => { const st = s.statuses.find(x => x.key === el.dataset.k2); if (st) st.label = v; }); },
   template(el) { const items = el.value.split('\n').map(x => x.trim()).filter(Boolean); mutate(s => { const t = s.templates.find(t => t.id === el.dataset.id); if (t) t.items = items; }); },
@@ -224,7 +233,10 @@ const C = {
   }
 };
 
-Object.assign(A, RA, LA, BA); Object.assign(C, RC, BC);
+Object.assign(A, RA, LA, BA, PA); Object.assign(C, RC, BC, PC);
+window.addEventListener('mph:menu', e => { const { type, id, e: ev } = e.detail; openMenu(type, id, ev); });
+window.addEventListener('mph:closemenu', () => { ui.menu = null; renderLayer(); });
+window.addEventListener('mph:focus', e => { ui.wantFocus = e.detail; });
 
 // MENUS AND MODALS
 function openMenu(type, id, e) { e.stopPropagation(); const r = e.target.closest('button').getBoundingClientRect(); ui.menu = { type, id, x: Math.min(r.right - 190, innerWidth - 200), y: r.bottom + 6 }; renderLayer(); }
@@ -233,8 +245,10 @@ function menu() {
   let items = '';
   if (m.type === 'area') items = b('aOpen', 'Details and notes') + b('aAdd', 'Add item') + b('aUp', 'Move up') + b('aDown', 'Move down') + '<div class="sep"></div>' + b('aDel', 'Delete topic');
   if (m.type === 'doc') items = b('dOpen', 'Open') + b('dRename', 'Rename') + b('dMove', 'Move') + '<div class="sep"></div>' + b('dDel', 'Remove');
+  if (m.type === 'task') items = taskMenu(m.id);
+  if (m.type === 'addtask') items = addTaskMenu(m.id);
   if (m.type === 'col') items = b('cUpload', 'Upload here') + b('cUp', 'Move up') + b('cDown', 'Move down') + '<div class="sep"></div>' + b('cDel', 'Remove collection');
-  const top = Math.min(m.y, innerHeight - 220);
+  const top = Math.max(8, Math.min(m.y, innerHeight - (m.type === 'task' ? 380 : m.type === 'addtask' ? 200 : 220)));
   return `<div style="position:fixed;inset:0;z-index:49" data-act="closeMenu"></div><div class="menu-pop" style="left:${Math.max(8, m.x)}px;top:${top}px">${items}</div>`;
 }
 function colOptions(section, sel, allowNew = true) {
