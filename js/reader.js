@@ -1,9 +1,9 @@
 // MPH reader: opens an uploaded HTML document in a sandbox and adds reading tools around it.
 // Resume position, bookmarks, highlights with notes, contents, search, text size, progress, focus mode.
 // The document talks to MPH only through postMessage, so it can never reach your login or data.
-import { esc, icon, uid } from './core.js?v=0.6.0';
-import { store, mutate, touch, readDoc, readDocState, saveDocState } from './store.js?v=0.6.0';
-import { colName } from './views.js?v=0.6.0';
+import { esc, icon, uid } from './core.js?v=0.6.1';
+import { store, mutate, touch, readDoc, readDocState, saveDocState } from './store.js?v=0.6.1';
+import { colName } from './views.js?v=0.6.1';
 
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
 const keep = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
@@ -105,7 +105,7 @@ function header(d) {
   const where = d ? `${d.section === 'learning' ? 'Learning' : 'Library'} · ${colName(d.col)}` : '';
   const btn = (act, ico, label, extra = '') => `<button class="iconbtn" data-act="${act}" ${extra} aria-label="${label}" title="${label}">${icon(ico, 17)}</button>`;
   const on = p => R.panel === p ? 'style="background:#2A2A2A;color:#39B44A"' : '';
-  return `<button class="iconbtn" data-act="readerHome" aria-label="Back" title="Back">${icon('left', 18)}</button>
+  return `<button class="bk-back" data-act="readerHome" aria-label="Back" title="Back">${icon('left', 16)}<span>Back</span></button>
     <div class="rt"><b>${esc(d ? d.title : 'Document')}</b><small><span class="rwhere">${esc(where)}</span><span class="rsep"></span><span class="rpct">${R.pct}%</span></small></div>
     ${R.sel ? `<button class="btn sm primary" data-act="rHighlight">${icon('highlight', 15)}Highlight</button>` : ''}
     <span class="rtools">

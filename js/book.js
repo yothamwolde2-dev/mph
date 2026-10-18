@@ -1,7 +1,7 @@
 // MPH study books. Rendered natively (no iframe) so bookmarks, resume and highlights are exact.
-import { esc, icon, uid } from './core.js?v=0.6.0';
-import { catalog, peek, progress, saveProgress } from './content.js?v=0.6.0';
-import { webHost, startHost } from './webrun.js?v=0.6.0';
+import { esc, icon, uid } from './core.js?v=0.6.1';
+import { catalog, peek, progress, saveProgress } from './content.js?v=0.6.1';
+import { webHost, startHost } from './webrun.js?v=0.6.1';
 
 const redraw = () => window.dispatchEvent(new Event('mph:redraw'));
 const toast = (t, undo) => window.dispatchEvent(new CustomEvent('mph:toast', { detail: { text: t, undo } }));
@@ -56,12 +56,12 @@ export function bookView(parts) {
   const p = prog(id); if (!p) return wait();
   const secs = sections(bk);
   if (!sec) return cover(id, meta, bk, p, secs);
-  const i = secs.findIndex(s => s.key === sec); if (i < 0) return `<p class="muted">Section not found.</p>`;
+  const i = secs.findIndex(s => s.key === sec); if (i < 0) return `<div class="bk-toprow">${backBtn(id, meta)}</div><p class="muted">This section is not in the book any more. Open the contents to continue.</p>`;
   const s = secs[i];
   const pct = Math.round(doneCount(bk, p) / chapters(bk) * 100);
   if (isWeb(bk)) return webView(id, meta, bk, p, secs, s, pct);
   const nav = `<div class="bk-bar">
-      <a class="iconbtn" href="#/book/${id}" aria-label="Contents" title="Contents">${icon('left', 16)}</a>
+      ${backBtn(id, meta, true)}
       <div class="bk-bt"><b>${esc(s.t)}</b><small>${esc(meta.title)} · ${pct}% read</small></div>
       <button class="iconbtn" data-act="bkMarkTop" aria-label="Bookmark this place" title="Bookmark this place (B)">${icon('bookmark', 17)}</button>
       <button class="iconbtn ${B.panel ? 'on' : ''}" data-act="bkPanel" aria-label="Contents, bookmarks and highlights" title="Contents, bookmarks and highlights">${icon('list', 17)}</button>
@@ -78,7 +78,7 @@ function webView(id, meta, bk, p, secs, s, pct) {
   if (B.route !== route) { B.route = route; B.cur = s.key; if (!B.jump) B.jump = { sec: s.key, b: -1 }; }
   const cur = secs.find(x => x.key === B.cur) || s;
   const nav = `<div class="bk-bar">
-      <a class="iconbtn" href="#/book/${id}" aria-label="Contents" title="Contents">${icon('left', 16)}</a>
+      ${backBtn(id, meta, true)}
       <div class="bk-bt"><b id="wbt">${esc(cur.t)}</b><small>${esc(meta.title)} · <span id="wbp">${pct}</span>% read</small></div>
       <button class="iconbtn" data-act="bkMarkTop" aria-label="Bookmark this place" title="Bookmark this place (B)">${icon('bookmark', 17)}</button>
       <button class="iconbtn ${B.panel ? 'on' : ''}" data-act="bkPanel" aria-label="Contents, bookmarks and highlights" title="Contents, bookmarks and highlights">${icon('list', 17)}</button>
@@ -117,6 +117,10 @@ function webStore() {
 }
 function webSecEl(art, key) { return art.querySelector('#' + CSS.escape(key.slice(3))); }
 
+
+// A clear Back button: returns to where the book was opened, else the course page or Library.
+function backTo(id, meta) { const f = (window.MPH_FROM || {})[id]; return f || (meta && meta.series ? '#/series/' + meta.series : '#/library'); }
+function backBtn(id, meta, inBook) { const href = inBook && window.MPH_LAST === '#/book/' + id ? '#/book/' + id : backTo(id, meta); return `<a class="bk-back" href="${href}" aria-label="Back" title="Back">${icon('left', 16)}<span>Back</span></a>`; }
 function cover(id, meta, bk, p, secs) {
   B.route = null;
   const chDone = doneCount(bk, p);
@@ -124,7 +128,7 @@ function cover(id, meta, bk, p, secs) {
   const resume = p.pos && secs.find(s => s.key === p.pos.sec);
   const groups = [];
   secs.forEach(s => { let g = groups.find(x => x.part === s.part); if (!g) groups.push(g = { part: s.part, items: [] }); g.items.push(s); });
-  return `<section class="bk-cover">${meta.series ? `<a class="eyebrow" href="#/series/${meta.series}">${esc(meta.seriesTitle || '')} · Level ${meta.level} of ${meta.levels || 5} · ${esc(meta.levelName || '')}</a>` : `<span class="eyebrow">${isWeb(bk) ? 'Library' : 'Study book'}</span>`}<h1 class="display">${esc(meta.title)}</h1><p class="muted">${esc(meta.sub)}</p>
+  return `<div class="bk-toprow">${backBtn(id, meta)}</div><section class="bk-cover">${meta.series ? `<a class="eyebrow" href="#/series/${meta.series}">${esc(meta.seriesTitle || '')} · Level ${meta.level} of ${meta.levels || 5} · ${esc(meta.levelName || '')}</a>` : `<span class="eyebrow">${isWeb(bk) ? 'Library' : 'Study book'}</span>`}<h1 class="display">${esc(meta.title)}</h1><p class="muted">${esc(meta.sub)}</p>
       <div class="bk-cprog"><span class="meter"><i style="width:${pct}%"></i></span><span class="num">${chDone} of ${chapters(bk)} ${isWeb(bk) ? 'sections' : 'chapters'} · ${pct}%</span></div>
       <div class="bk-cact">${resume ? `<button class="btn primary" data-act="bkResume">${icon('book', 15)}Continue: ${esc(resume.t)}</button>` : `<a class="btn primary" href="#/book/${id}/${secs[0].key}">${icon('book', 15)}Start reading</a>`}
       <span class="faint">${p.marks.length} bookmarks · ${p.hls.length} highlights</span></div></section>
@@ -301,7 +305,8 @@ function paintFind(art, q) {
 function topBlock(art) {
   const r = art.getBoundingClientRect(); if (!r.width) return null;
   const xs = [0.5, 0.3, 0.7, 0.15].map(f => r.left + r.width * f);
-  for (let y = 136; y < innerHeight - 10; y += 16) for (const x of xs) {
+  const bar = document.querySelector('.bk-bar'); const y0 = bar ? Math.max(100, bar.getBoundingClientRect().bottom + 6) : 136;
+  for (let y = y0; y < innerHeight - 10; y += 16) for (const x of xs) {
     const e = document.elementFromPoint(x, y); const b = e && e.closest && e.closest('[data-b]');
     if (b && art.contains(b)) return b;
   }
@@ -518,7 +523,7 @@ export function seriesView(parts) {
         ${open ? `<div class="sr-go"><a class="btn primary" href="#/book/${l.book}" ${p.pos ? `data-act="bkResumeFrom" data-id="${l.book}"` : ''}>${icon('book', 15)}${p.pos ? 'Continue' : 'Start level ' + l.n}</a><a class="btn" href="#/book/${l.book}">Contents</a><span class="faint">${pct}% · ${done} of ${meta.chapters} chapters</span></div>` : `<div class="sr-go"><span class="faint">${icon('lock', 14)} ${esc(l.unlock || 'Opens when the level before is complete')}</span></div>`}
       </div></section>`;
   }).join('');
-  return `<section class="sr-hero tone-${esc(sr.tone || 'green')}"><a class="eyebrow" href="#/library">Library</a><h1 class="display">${esc(sr.title)}</h1><p>${esc(sr.sub)}</p></section>
+  return `<div class="bk-toprow"><a class="bk-back" href="#/library" aria-label="Back to Library">${icon('left', 16)}<span>Library</span></a></div><section class="sr-hero tone-${esc(sr.tone || 'green')}"><span class="eyebrow">Course in five levels</span><h1 class="display">${esc(sr.title)}</h1><p>${esc(sr.sub)}</p></section>
     <div class="sr-grid">
       <section class="panel sr-scope"><div class="ptitle"><i class="tick"></i><span class="eyebrow">Scope</span></div>
         ${sc.about ? `<p class="sr-lead">${esc(sc.about)}</p>` : ''}

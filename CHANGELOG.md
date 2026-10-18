@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.1, 18 October 2026
+
+* A clear Back button in every book, manual, document and language lesson, on Mac and iPhone. From a chapter it returns to the contents, from the contents to where you opened the book (Library, a course page or Home).
+* On iPhone the reading bar puts the title on its own line so nothing is squeezed.
+
 ## 0.6.0, 18 October 2026
 
 * Library has five courses in five levels: International Business, Project Management, Finance, Information Technology and Artificial Intelligence. Each opens on its own page with the scope (what it covers, what it does not, how it works, which standards it follows) and the journey from Foundation to Practitioner, Professional, Specialist and Expert.

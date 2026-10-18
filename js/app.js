@@ -1,12 +1,12 @@
 // MPH app: routing, rendering, actions, upload and the HTML reader.
-import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.6.0';
-import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG } from './store.js?v=0.6.0';
-import * as V from './views.js?v=0.6.0';
-import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.6.0';
-import { LA, learningHub, langView, stopSpeech } from './lang.js?v=0.6.0';
-import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView, seriesView } from './book.js?v=0.6.0';
-import { warmContent } from './content.js?v=0.6.0';
-import { planView, PA, PC, taskMenu, addTaskMenu } from './plan.js?v=0.6.0';
+import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.6.1';
+import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG } from './store.js?v=0.6.1';
+import * as V from './views.js?v=0.6.1';
+import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.6.1';
+import { LA, learningHub, langView, stopSpeech } from './lang.js?v=0.6.1';
+import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView, seriesView } from './book.js?v=0.6.1';
+import { warmContent } from './content.js?v=0.6.1';
+import { planView, PA, PC, taskMenu, addTaskMenu } from './plan.js?v=0.6.1';
 
 const $app = document.getElementById('app');
 const $layer = document.getElementById('layer');
@@ -62,7 +62,14 @@ function renderLayer() {
 let rq = 0; const queueRender = () => { if (!rq) rq = requestAnimationFrame(() => { rq = 0; render(); }); };
 onChange(queueRender);
 window.addEventListener('mph:sync', () => { const el = document.querySelector('.sync'); if (!el) return; const l = V.syncLabel(); el.className = 'sync ' + l.cls; el.innerHTML = '<i></i>' + l.txt; });
-window.addEventListener('hashchange', () => { ui.menu = null; ui.drawer = null; window.scrollTo(0, 0); render(); });
+// Back from a book returns to where the book was opened (Library, a course page, Home).
+const bookOf = h => { const m = /#\/book\/([^/]+)/.exec(h || ''); return m ? m[1] : null; };
+window.addEventListener('hashchange', e => {
+  const to = bookOf(location.hash), from = e.oldURL ? '#' + (e.oldURL.split('#')[1] || '') : '';
+  if (to && bookOf(from) !== to) { window.MPH_FROM = window.MPH_FROM || {}; window.MPH_FROM[to] = from && from !== '#' ? from : ''; }
+  window.MPH_LAST = from;
+  ui.menu = null; ui.drawer = null; window.scrollTo(0, 0); render();
+});
 window.addEventListener('mph:redraw', () => queueRender());
 
 // INSTALL: show how to turn MPH into an app until it runs as one

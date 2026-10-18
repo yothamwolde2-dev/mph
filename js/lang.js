@@ -1,8 +1,8 @@
 // MPH Languages: Chinese (HSK 2, HSK 3; HSK 4 and 5 locked), German (A1), Afaan Oromo (level 1).
 // Each language says in the catalog how its screens are labelled (ui) and which device voice reads it (voice).
 // Flashcards with spaced repetition, dialogs with audio, listening drills, grammar, words.
-import { esc, icon } from './core.js?v=0.6.0';
-import { catalog, peek, progress, saveProgress } from './content.js?v=0.6.0';
+import { esc, icon } from './core.js?v=0.6.1';
+import { catalog, peek, progress, saveProgress } from './content.js?v=0.6.1';
 
 const redraw = () => window.dispatchEvent(new Event('mph:redraw'));
 const toast = (t, undo) => window.dispatchEvent(new CustomEvent('mph:toast', { detail: { text: t, undo } }));
@@ -227,7 +227,7 @@ function dialogView(langId, lv, data, p, idx) {
       <div class="lx-opts">${q.o.map((o, oi) => `<button class="${a === undefined ? '' : oi === q.a ? 'ok' : oi === a ? 'bad' : ''}" data-act="lxAns" data-d="${d.id}" data-q="${qi}" data-o="${oi}" ${a !== undefined ? 'disabled' : ''}>${esc(o)}</button>`).join('')}</div></div>`; }).join('');
   const done = d.q.length && Object.keys(ans).length === d.q.length;
   const score = d.q.filter((q, qi) => ans[qi] === q.a).length;
-  return `<div class="lx-dhead"><a class="iconbtn" href="#/lang/${langId}/${lv.id}/dialogs" aria-label="Back">${icon('left', 16)}</a><div class="grow"><b class="display">${esc(d.te)}</b><small class="lx-zh">${esc(d.t)}</small></div></div>
+  return `<div class="lx-dhead"><a class="bk-back" href="#/lang/${langId}/${lv.id}/dialogs" aria-label="Back">${icon('left', 16)}<span>Back</span></a><div class="grow"><b class="display">${esc(d.te)}</b><small class="lx-zh">${esc(d.t)}</small></div></div>
     <div class="lx-ctrl">
       ${UI().noaudio ? '' : `<button class="btn primary" data-act="lxPlayAll">${icon(playing ? 'pause' : 'play', 15)}${playing ? 'Stop' : 'Play all'}</button>
       <span class="seg">${[0.7, 0.85, 1].map(r => `<button class="${P.speed === r ? 'on' : ''}" data-act="lxSpeed" data-r="${r}">${r === 1 ? 'Normal' : r === 0.85 ? 'Steady' : 'Slow'}</button>`).join('')}</span>`}
@@ -266,7 +266,7 @@ function listenView(langId, lv, data, p, sub) {
   }
   if (dr.kind === 'dialog' || dr.kind === 'passage') {
     const list = dr.kind === 'dialog' ? data.dialogs : (data.passages || []);
-    return `<div class="lx-dhead"><button class="iconbtn" data-act="lxDrillEnd" aria-label="Back">${icon('left', 16)}</button><div class="grow"><b class="display">${dr.kind === 'dialog' ? 'Dialog challenge' : 'Listening passages'}</b><small class="faint">Text starts hidden. Play, answer, then reveal.</small></div></div>
+    return `<div class="lx-dhead"><button class="bk-back" data-act="lxDrillEnd" aria-label="Back">${icon('left', 16)}<span>Back</span></button><div class="grow"><b class="display">${dr.kind === 'dialog' ? 'Dialog challenge' : 'Listening passages'}</b><small class="faint">Text starts hidden. Play, answer, then reveal.</small></div></div>
       <div class="lx-list">${list.map((d, i) => { const r = p.dlg[d.id]; return `<a class="lx-row" data-act="lxChallenge" data-href="#/lang/${langId}/${lv.id}/dialogs/${dr.kind === 'dialog' ? i : 'p' + i}" data-d="${d.id}" href="#/lang/${langId}/${lv.id}/dialogs/${dr.kind === 'dialog' ? i : 'p' + i}"><span class="lx-zh">${esc(d.t)}</span><span class="grow"><b>${esc(d.te)}</b><small>${d.lines.length} lines</small></span><span class="lx-score">${r ? `${r.score}/${r.of}` : ''}</span></a>`; }).join('')}</div>`;
   }
   if (dr.i >= dr.items.length) {
@@ -290,7 +290,7 @@ function grammarList(langId, lv, data) {
 }
 function grammarPoint(langId, lv, data, i) {
   const g = data.grammar[i]; if (!g) return '';
-  return `<div class="lx-dhead"><a class="iconbtn" href="#/lang/${langId}/${lv.id}/grammar" aria-label="Back">${icon('left', 16)}</a><div class="grow"><b class="display">${esc(g.t)}</b></div>
+  return `<div class="lx-dhead"><a class="bk-back" href="#/lang/${langId}/${lv.id}/grammar" aria-label="Back">${icon('left', 16)}<span>Back</span></a><div class="grow"><b class="display">${esc(g.t)}</b></div>
       ${i > 0 ? `<a class="iconbtn" href="#/lang/${langId}/${lv.id}/grammar/${i - 1}" aria-label="Previous">${icon('up', 15)}</a>` : ''}${i < data.grammar.length - 1 ? `<a class="iconbtn" href="#/lang/${langId}/${lv.id}/grammar/${i + 1}" aria-label="Next">${icon('down', 15)}</a>` : ''}</div>
     <div class="panel lx-gram"><b class="lx-pat">${esc(g.p)}</b><p class="lx-mean">${esc(g.m)}</p><p>${esc(g.h)}</p>${g.x ? `<p class="lx-x"><b>Common mistake</b> ${esc(g.x)}</p>` : ''}
       <div class="lx-exs">${g.ex.map(e => `<button class="lx-ex" data-act="lxSay" data-t="${esc(e.h)}">${icon('sound', 15)}<span><b>${esc(e.h)}</b><small>${esc(e.p)}</small><small>${esc(e.e)}</small></span></button>`).join('')}</div></div>`;
@@ -318,7 +318,7 @@ function exerciseSet(langId, lv, data, p, i) {
   }).join('');
   const n = Object.keys(A).length; const done = n === x.items.length;
   const score = x.items.filter((q, qi) => A[qi] !== undefined && (q.o ? A[qi] === q.a : (Array.isArray(q.a) ? q.a : [q.a]).some(v => norm(v) === norm(A[qi])))).length;
-  return `<div class="lx-dhead"><a class="iconbtn" href="#/lang/${langId}/${lv.id}/practice" aria-label="Back">${icon('left', 16)}</a><div class="grow"><b class="display">${esc(x.t)}</b>${x.g ? `<small class="faint">${esc(x.g)}</small>` : ''}</div>
+  return `<div class="lx-dhead"><a class="bk-back" href="#/lang/${langId}/${lv.id}/practice" aria-label="Back">${icon('left', 16)}<span>Back</span></a><div class="grow"><b class="display">${esc(x.t)}</b>${x.g ? `<small class="faint">${esc(x.g)}</small>` : ''}</div>
       ${i < data.exercises.length - 1 ? `<a class="btn sm" href="#/lang/${langId}/${lv.id}/practice/${i + 1}">Next set</a>` : ''}</div>
     ${x.intro ? `<p class="muted" style="margin:0 0 14px">${esc(x.intro)}</p>` : ''}
     <div class="lx-qs">${items}${done ? `<div class="lx-exdone"><b class="display">${score} / ${x.items.length}</b><span class="muted">${score === x.items.length ? 'Perfect.' : score >= x.items.length * 0.8 ? 'Strong. Review the ones you missed.' : 'Read the grammar point again, then retry.'}</span><button class="btn" data-act="lxExRetry" data-x="${x.id}">Try again</button></div>` : ''}</div>`;
