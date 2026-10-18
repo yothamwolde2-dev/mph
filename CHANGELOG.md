@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.1, 18 October 2026
+
+* Dahua book: real product photos from Dahua's own product pages on a premium studio stage, and a 360 viewer. Open a product and it turns once; drag to turn it yourself, or tap 360. Where Dahua publishes several angles (the VTO2311R-WP door station has eight) the viewer turns through them. Photos now on: ITC439, ITC314-PH3A-F, ITC314-PH3A-TF, ITC413, ITC952, NVR5216-EI, VTO2311R-WP, VTO2202F-P, ARC3000H-W2 and the IPMPGI-1033 guidance screen.
+
 ## 0.8.0, 18 October 2026
 
 * German A1 and Afaan Oromo Level 1 are now real courses, not only flashcards. A new Course tab teaches in order: 16 German lessons and 10 Afaan Oromo lessons, each with goals, explanations, phrases with sound, tables, culture notes, the lesson's words, its grammar, its dialogs and readings, exercises, a writing task saved to your account, a five question check and recommended YouTube videos.

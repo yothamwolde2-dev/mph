@@ -332,6 +332,8 @@ def dahua():
     extra = """
 $P{padding:0!important;background:#fff;color:#000;font-family:var(--font);font-size:16px;line-height:1.55;--hd:0px;--ft:0px}
 $P section.s{scroll-margin-top:124px}
+$P #modal{padding:136px 16px 40px calc(var(--side,236px) + 16px)!important}
+@media (max-width:860px){$P #modal{padding:172px 10px 104px!important}}
 """
     return web_convert(html, 'dahua', 'The Intelligent District', 'Mansen and Dahua · Connected infrastructure, one operational picture',
                        'section.s', lambda a: {'t': a.get('data-title'), 'part': 'Executive story' if a.get('data-story') == '1' else 'Deep dive'},
@@ -401,7 +403,7 @@ if __name__ == '__main__':
         'books': [
             {'id': 'cm1', 'title': 'Corporate Management', 'sub': 'Book 1 · How companies work, from structure to strategy', 'file': 'book-cm1', 'v': 1, 'size': sizes['book-cm1'], 'chapters': len(bk['ch']), 'kind': 'study', 'tone': 'green'},
             {'id': 'coffee', 'title': cf['title'], 'sub': cf['sub'], 'file': 'book-coffee', 'v': 1, 'size': sizes['book-coffee'], 'chapters': len(cf['sections']), 'kind': 'web', 'tone': 'coffee'},
-            {'id': 'dahua', 'title': dh['title'], 'sub': dh['sub'], 'file': 'book-dahua', 'v': 2, 'size': sizes['book-dahua'], 'chapters': len(dh['sections']), 'kind': 'web', 'tone': 'light'},
+            {'id': 'dahua', 'title': dh['title'], 'sub': dh['sub'], 'file': 'book-dahua', 'v': 3, 'size': sizes['book-dahua'], 'chapters': len(dh['sections']), 'kind': 'web', 'tone': 'light'},
             {'id': 'integration', 'title': ia['title'], 'sub': ia['sub'], 'file': 'book-integration', 'v': 1, 'size': sizes['book-integration'], 'chapters': len(ia['sections']), 'kind': 'web', 'tone': 'green'}] + series_books,
         'series': series_meta
     }
