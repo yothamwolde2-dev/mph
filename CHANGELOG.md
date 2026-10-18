@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.2, 18 October 2026
+
+* Dahua book: more product photos in the 360 viewer: ASI7213X face recognition terminal (6 angles), D-Volt Mini EV charger (6), IPC-HFW3849T1 WizSense bullet (3) and the IPMECD-2032 barrier.
+
 ## 0.8.1, 18 October 2026
 
 * Dahua book: real product photos from Dahua's own product pages on a premium studio stage, and a 360 viewer. Open a product and it turns once; drag to turn it yourself, or tap 360. Where Dahua publishes several angles (the VTO2311R-WP door station has eight) the viewer turns through them. Photos now on: ITC439, ITC314-PH3A-F, ITC314-PH3A-TF, ITC413, ITC952, NVR5216-EI, VTO2311R-WP, VTO2202F-P, ARC3000H-W2 and the IPMPGI-1033 guidance screen.
