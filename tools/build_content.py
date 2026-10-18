@@ -172,6 +172,19 @@ def book():
     return json.load(open(src('book_raw.json')))
 
 
+# Courses in five levels (Library). Each sr_<id>.py in the sources folder defines SERIES and L1, L2, ...
+def all_series():
+    import glob, importlib.util
+    sys.path.insert(0, SRC)
+    out = []
+    for f in sorted(glob.glob(src('sr_*.py'))):
+        if f.endswith('sr_lib.py'): continue
+        spec = importlib.util.spec_from_file_location(os.path.basename(f)[:-3], f); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+        books = {lv['n']: getattr(m, 'L%d' % lv['n']) for lv in m.SERIES['levels'] if lv.get('book') and not lv.get('locked') and hasattr(m, 'L%d' % lv['n'])}
+        out.append((m.SERIES, books))
+    return out
+
+
 # Library books that keep their own design and interactive tools (see tools/webbook.py)
 from webbook import convert as web_convert, plain as web_plain
 
@@ -215,6 +228,16 @@ if __name__ == '__main__':
     om1 = textlevel('om_l1', 'l1', 'Level 1', 'om1')
     sizes['de-a1'] = lock('de-a1', de1)
     sizes['om-l1'] = lock('om-l1', om1)
+    series_meta, series_books = [], []
+    for sr, books in all_series():
+        for n, sbk in books.items():
+            lv = next(l for l in sr['levels'] if l['n'] == n)
+            sbk.setdefault('levels', [[l['name'], l['about'], ', '.join(l.get('can', []))] for l in sr['levels']])
+            fid = 'book-' + lv['book']
+            sizes[fid] = lock(fid, sbk)
+            series_books.append({'id': lv['book'], 'title': sr['title'], 'sub': 'Level %d · %s' % (n, lv['name']), 'file': fid, 'v': lv.get('v', 1), 'size': sizes[fid], 'chapters': len(sbk['ch']), 'kind': 'study',
+                                 'series': sr['id'], 'seriesTitle': sr['title'], 'level': n, 'levels': len(sr['levels']), 'levelName': lv['name'], 'tone': sr.get('tone', 'green')})
+        series_meta.append(sr)
     cf, dh = coffee(), dahua()
     sizes['book-coffee'] = lock('book-coffee', cf)
     sizes['book-dahua'] = lock('book-dahua', dh)
@@ -242,7 +265,8 @@ if __name__ == '__main__':
         'books': [
             {'id': 'cm1', 'title': 'Corporate Management', 'sub': 'Book 1 · How companies work, from structure to strategy', 'file': 'book-cm1', 'v': 1, 'size': sizes['book-cm1'], 'chapters': len(bk['ch']), 'kind': 'study', 'tone': 'green'},
             {'id': 'coffee', 'title': cf['title'], 'sub': cf['sub'], 'file': 'book-coffee', 'v': 1, 'size': sizes['book-coffee'], 'chapters': len(cf['sections']), 'kind': 'web', 'tone': 'coffee'},
-            {'id': 'dahua', 'title': dh['title'], 'sub': dh['sub'], 'file': 'book-dahua', 'v': 1, 'size': sizes['book-dahua'], 'chapters': len(dh['sections']), 'kind': 'web', 'tone': 'light'}]
+            {'id': 'dahua', 'title': dh['title'], 'sub': dh['sub'], 'file': 'book-dahua', 'v': 1, 'size': sizes['book-dahua'], 'chapters': len(dh['sections']), 'kind': 'web', 'tone': 'light'}] + series_books,
+        'series': series_meta
     }
     lock('index', index)
     print(json.dumps(sizes), 'hsk2', len(h2['words']), len(h2['dialogs']), len(h2['grammar']), 'hsk3', len(h3['words']), len(h3['dialogs']), len(h3['grammar']), len(h3['passages']))
@@ -254,7 +278,7 @@ def pack_sources():
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode='w:gz') as t:
         for name in sorted(os.listdir(SRC)):
-            if name.endswith(('.txt', '_raw.json', '.html')):
+            if name.endswith(('.txt', '_raw.json', '.html', '.py')):
                 t.add(os.path.join(SRC, name), arcname=name)
     iv = os.urandom(12)
     with open(os.path.join(OUT, '_sources.bin'), 'wb') as f:

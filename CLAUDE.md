@@ -57,6 +57,8 @@ Yotham does not upload documents in the app for courses and books. He sends them
 
 Library documents (finished HTML documents with their own design, like the Coffee manual and the Dahua proposal): save the file into the sources folder as `<id>.html`, add a small function next to `coffee()` and `dahua()` in `build_content.py` (title, subtitle, the selector of its sections, how to read each section's title, and the selectors of the document's own navigation to hide), add it to `books` in the index with `kind: 'web'` and a `tone` for its cover (`green`, `coffee`, `light`), then build. Test it in Playwright on desktop and phone sizes: bookmarks, resume, contents, search, and its interactive tools.
 
+Library courses in five levels (series): each subject is one file `sr_<id>.py` in the sources folder, written with the helpers in `sr_lib.py` (`ch()` for chapters, `g()` glossary, `case()`, `sim()`, `ex()`, `tpl()`). The file defines `SERIES` (title, tone, mark, scope, the five levels with `book` ids, `locked` and `unlock`) and one dict per open level, `L1`, `L2` and so on. `all_series()` in `build_content.py` finds the files and builds `book-<id>-<n>.bin` for every open level that has an `L<n>`. To open a new level: write `L<n>`, remove `locked` from that level, add its bin to `SHELL` in `sw.js`, build. Open now: International Business, Project Management, Finance, IT and AI, levels 1 and 2. Every level must go deeper than the one before, with case studies and exercises; level 5 is expert.
+
 Progress sync: book and course progress is merged between devices (`mergeProg` in core.js): lists with ids are joined, removals are kept in `gone`, entries with a time (`at`, `seen`) keep the newest. Give anything new that is saved in progress an `id` and an `at` so it merges correctly.
 
 Content is private: the repository is public, so anything unencrypted in it is public. Locked files are unreadable without the key, which only Yotham's login can read.
@@ -80,5 +82,6 @@ Languages: Chinese has HSK 2 and HSK 3 open, HSK 4 and HSK 5 locked (open them w
 4. Learning (0.2, done): native Languages app (Chinese HSK 2 and 3) and native study book reader (Corporate Management Book 1), private locked content, offline.
 5. Plan (0.4, done): Plan page with month, week and day cascade, Home calendar and notes, lighter Projects with priority badges and add to tasks.
 6. Library (0.3, done): Library shelf with covers, Coffee manual and Dahua proposal as web books, bookmarks and resume synced and merged between Mac and iPhone, automatic updates.
-7. Next for Learning: HSK 4 and 5 when unlocked, German, Afaan Oromo, International Business, AI and Prompting as Yotham sends material.
+7. Next for Learning: HSK 4 and 5 when unlocked, German A2, Afaan Oromo Level 2, the Financial Engineering roadmap (Linear Algebra and Python first, exercises for every video) and an interactive AI course.
+9. Library series (0.6, done): five subjects in five levels, levels 1 and 2 written; levels 3 to 5 next.
 8. Later: per item records in the database for live merging between devices, uploading the Power Grotesk font, search across everything.

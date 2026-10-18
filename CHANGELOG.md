@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.0, 18 October 2026
+
+* Library has five courses in five levels: International Business, Project Management, Finance, Information Technology and Artificial Intelligence. Each opens on its own page with the scope (what it covers, what it does not, how it works, which standards it follows) and the journey from Foundation to Practitioner, Professional, Specialist and Expert.
+* Levels 1 and 2 are open for all five, 120 chapters in total. Every chapter runs Learn, Understand, See it in practice, Practice with a model answer, Decide, a quiz, take aways and a private reflection. Each level ends with case studies, simulations, worked exercises, templates, a glossary and a mastery checklist. Levels 3 to 5 are shown locked.
+* New Exercises section in study books, with self marking.
+* All ten books open offline.
+
 ## 0.5.0, 18 October 2026
 
 * German A1 is open: 629 words with articles, plurals and verb forms, 34 grammar points covering the whole A1 syllabus, 15 dialogs, 8 reading and listening texts (emails, adverts, announcements), and 32 exercise sets with 203 questions (choose or type the answer, with explanations and audio). A2 and B1 are shown locked.

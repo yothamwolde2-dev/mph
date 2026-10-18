@@ -1,9 +1,9 @@
 // MPH views. Each returns markup; app.js wires the actions.
-import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.5.0';
-import { store, WIDGETS, CONFIG } from './store.js?v=0.5.0';
-import { homeLearning } from './lang.js?v=0.5.0';
-import { homeBooks } from './book.js?v=0.5.0';
-import { HW, openToday, nodeInPlan } from './plan.js?v=0.5.0';
+import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.6.0';
+import { store, WIDGETS, CONFIG } from './store.js?v=0.6.0';
+import { homeLearning } from './lang.js?v=0.6.0';
+import { homeBooks } from './book.js?v=0.6.0';
+import { HW, openToday, nodeInPlan } from './plan.js?v=0.6.0';
 
 export const NAV = [
   { group: 'Work', items: [
@@ -17,7 +17,7 @@ export const NAV = [
   ] }
 ];
 export const TABS = ['home', 'projects', 'plan', 'learning', 'library'];
-const LABEL = { lang: 'Learning', book: 'Library', home: 'Home', projects: 'Projects', plan: 'Plan', learning: 'Learning', library: 'Library', settings: 'Settings', read: 'Reader' };
+const LABEL = { lang: 'Learning', book: 'Library', series: 'Library', home: 'Home', projects: 'Projects', plan: 'Plan', learning: 'Learning', library: 'Library', settings: 'Settings', read: 'Reader' };
 
 const S = () => store.state;
 const stOf = key => S().statuses.find(s => s.key === key) || S().statuses[0];
@@ -297,7 +297,7 @@ export function syncLabel() {
   return { cls: v === 'saving' ? 'saving' : (v === 'offline' || v === 'error') ? 'off' : '', txt: v === 'saving' ? 'Saving' : v === 'offline' ? 'Offline, saved on this device' : v === 'error' ? 'Not synced, will retry' : 'Synced' };
 }
 export function shell(route, inner) {
-  const st = S(); const r0 = route.split('/')[0]; const r = r0 === 'lang' ? 'learning' : r0 === 'book' ? 'library' : r0;
+  const st = S(); const r0 = route.split('/')[0]; const r = r0 === 'lang' ? 'learning' : (r0 === 'book' || r0 === 'series') ? 'library' : r0;
   const { cls: syncCls, txt: syncTxt } = syncLabel();
   const counts = { plan: openToday() };
   return `<div class="shell">

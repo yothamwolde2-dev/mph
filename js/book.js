@@ -1,7 +1,7 @@
 // MPH study books. Rendered natively (no iframe) so bookmarks, resume and highlights are exact.
-import { esc, icon, uid } from './core.js?v=0.5.0';
-import { catalog, peek, progress, saveProgress } from './content.js?v=0.5.0';
-import { webHost, startHost } from './webrun.js?v=0.5.0';
+import { esc, icon, uid } from './core.js?v=0.6.0';
+import { catalog, peek, progress, saveProgress } from './content.js?v=0.6.0';
+import { webHost, startHost } from './webrun.js?v=0.6.0';
 
 const redraw = () => window.dispatchEvent(new Event('mph:redraw'));
 const toast = (t, undo) => window.dispatchEvent(new CustomEvent('mph:toast', { detail: { text: t, undo } }));
@@ -24,12 +24,14 @@ function sections(bk) {
   const s = [];
   bk.front.forEach((f, i) => s.push({ key: 'f' + i, t: f.t, kind: 'front', part: 'Before you begin' }));
   bk.ch.forEach(c => s.push({ key: 'ch' + c.n, t: c.t, kind: 'ch', n: c.n, part: bk.parts[c.part] }));
-  s.push({ key: 'gl', t: 'Glossary', kind: 'gl', part: 'Toolkit' });
-  s.push({ key: 'fw', t: 'Frameworks', kind: 'fw', part: 'Toolkit' });
-  s.push({ key: 'skills', t: 'Skills', kind: 'skills', part: 'Toolkit' });
-  s.push({ key: 'cases', t: 'Case library', kind: 'cases', part: 'Toolkit' });
-  s.push({ key: 'sims', t: 'Simulations', kind: 'sims', part: 'Toolkit' });
-  s.push({ key: 'tpl', t: 'Templates', kind: 'tpl', part: 'Toolkit' });
+  const has = k => bk[k] && bk[k].length;
+  if (has('cases')) s.push({ key: 'cases', t: 'Case library', kind: 'cases', part: 'Toolkit' });
+  if (has('sims')) s.push({ key: 'sims', t: 'Simulations', kind: 'sims', part: 'Toolkit' });
+  if (has('ex')) s.push({ key: 'ex', t: 'Exercises', kind: 'ex', part: 'Toolkit' });
+  if (has('fw')) s.push({ key: 'fw', t: 'Frameworks and tools', kind: 'fw', part: 'Toolkit' });
+  if (has('skills')) s.push({ key: 'skills', t: 'Skills', kind: 'skills', part: 'Toolkit' });
+  if (has('tpl')) s.push({ key: 'tpl', t: 'Templates', kind: 'tpl', part: 'Toolkit' });
+  if (has('gl')) s.push({ key: 'gl', t: 'Glossary', kind: 'gl', part: 'Toolkit' });
   if (bk.mansenQ && bk.mansenQ.length) s.push({ key: 'mq', t: 'Mansen questions', kind: 'mq', part: 'Toolkit' });
   if (bk.levels && bk.levels.length) s.push({ key: 'lv', t: 'Development levels', kind: 'lv', part: 'Toolkit' });
   if (bk.completion && bk.completion.length) s.push({ key: 'done', t: 'Mastery checklist', kind: 'cmp', part: 'Toolkit' });
@@ -122,7 +124,7 @@ function cover(id, meta, bk, p, secs) {
   const resume = p.pos && secs.find(s => s.key === p.pos.sec);
   const groups = [];
   secs.forEach(s => { let g = groups.find(x => x.part === s.part); if (!g) groups.push(g = { part: s.part, items: [] }); g.items.push(s); });
-  return `<section class="bk-cover"><span class="eyebrow">${isWeb(bk) ? 'Library' : 'Study book'}</span><h1 class="display">${esc(meta.title)}</h1><p class="muted">${esc(meta.sub)}</p>
+  return `<section class="bk-cover">${meta.series ? `<a class="eyebrow" href="#/series/${meta.series}">${esc(meta.seriesTitle || '')} · Level ${meta.level} of ${meta.levels || 5} · ${esc(meta.levelName || '')}</a>` : `<span class="eyebrow">${isWeb(bk) ? 'Library' : 'Study book'}</span>`}<h1 class="display">${esc(meta.title)}</h1><p class="muted">${esc(meta.sub)}</p>
       <div class="bk-cprog"><span class="meter"><i style="width:${pct}%"></i></span><span class="num">${chDone} of ${chapters(bk)} ${isWeb(bk) ? 'sections' : 'chapters'} · ${pct}%</span></div>
       <div class="bk-cact">${resume ? `<button class="btn primary" data-act="bkResume">${icon('book', 15)}Continue: ${esc(resume.t)}</button>` : `<a class="btn primary" href="#/book/${id}/${secs[0].key}">${icon('book', 15)}Start reading</a>`}
       <span class="faint">${p.marks.length} bookmarks · ${p.hls.length} highlights</span></div></section>
@@ -175,6 +177,7 @@ function sectionHtml(bk, s) {
   if (s.kind === 'fw') return bk.fw.map(c => `${c.t} ${c.what} ${c.how} ${c.ex || ''}`).join(' ');
   if (s.kind === 'tpl') return bk.tpl.map(c => `${c.t} ${c.body}`).join(' ');
   if (s.kind === 'sims') return bk.sims.map(c => `${c.t} ${c.scn}`).join(' ');
+  if (s.kind === 'ex') return bk.ex.map(c => `${c.t} ${c.q} ${c.a}`).join(' ');
   if (s.kind === 'mq') return bk.mansenQ.map(q => q.join(' ')).join(' ');
   if (s.kind === 'lv') return bk.levels.map(l => l.join(' ')).join(' ');
   if (s.kind === 'cmp') return bk.completion.join(' ');
@@ -182,7 +185,7 @@ function sectionHtml(bk, s) {
 }
 
 function renderSection(id, bk, s, p) {
-  const H = (k, t) => `<h2 class="bk-h"><span>${k}</span>${t}</h2>`;
+  let hn = 0; const H = (k, t) => `<h2 class="bk-h"><span>${String(++hn).padStart(2, '0')}</span>${t}</h2>`;
   if (s.kind === 'front' || s.kind === 'pv') return `<div class="bk-k">${esc(s.part)}</div><h1 class="display bk-title">${esc(s.t)}</h1><div class="bk-body">${sectionHtml(bk, s)}</div>`;
   if (s.kind === 'ch') {
     const c = bk.ch.find(c => c.n === s.n); const qa = p.quiz[s.key] || {};
@@ -208,10 +211,10 @@ function renderSection(id, bk, s, p) {
     return `<div class="bk-k">Toolkit</div><h1 class="display bk-title">Glossary</h1><div class="bk-body"><p class="muted">${bk.gl.length} terms. Search, or filter by area.</p>
       <input class="field" id="bkgq" value="${esc(B.gq)}" placeholder="Find a term" autocomplete="off" style="margin:10px 0">
       <div class="bk-cats"><button class="${!B.gcat ? 'on' : ''}" data-act="bkCat" data-c="">All</button>${cats.map(c => `<button class="${B.gcat === c ? 'on' : ''}" data-act="bkCat" data-c="${esc(c)}">${esc(c)}</button>`).join('')}</div>
-      ${list(items, g => `<details class="bk-term"><summary><b>${esc(g.t)}</b><small>${esc(g.s)}</small></summary><div><p><b>Precisely</b> ${esc(g.p)}</p><p><b>Example</b> ${esc(g.e)}</p><p><b>Related</b> ${esc(g.r)}</p><p><b>Where you meet it</b> ${esc(g.w)}</p></div></details>`)}</div>`;
+      ${list(items, g => `<details class="bk-term"><summary><b>${esc(g.t)}</b><small>${esc(g.s)}</small></summary><div>${g.p ? `<p><b>Precisely</b> ${esc(g.p)}</p>` : ''}${g.e ? `<p><b>Example</b> ${esc(g.e)}</p>` : ''}${g.r ? `<p><b>Related</b> ${esc(g.r)}</p>` : ''}${g.w ? `<p><b>Where you meet it</b> ${esc(g.w)}</p>` : ''}</div></details>`)}</div>`;
   }
   if (s.kind === 'cases') return `<div class="bk-k">Toolkit</div><h1 class="display bk-title">Case library</h1><div class="bk-body">${list(bk.cases, c => `<details class="bk-term"><summary><b>${esc(c.t)}</b><small>${esc(c.pr)}</small></summary><div>
-      <p><b>Background</b> ${esc(c.bg)}</p><p><b>Problem</b> ${esc(c.pr)}</p><p><b>Data</b> ${esc(c.da)}</p><p><b>Stakeholders</b> ${esc(c.st)}</p><p><b>Decision</b> ${esc(c.de)}</p><ul>${(c.qs || []).map(q => `<li>${esc(q)}</li>`).join('')}</ul>
+      ${[['Background', c.bg], ['Problem', c.pr], ['Data', c.da], ['Stakeholders', c.st], ['Decision', c.de]].filter(x => x[1]).map(([k, v]) => `<p><b>${k}</b> ${esc(v)}</p>`).join('')}<ul>${(c.qs || []).map(q => `<li>${esc(q)}</li>`).join('')}</ul>
       <details class="rv"><summary>Show a model answer</summary><div><p>${esc(c.mo)}</p><p><b>Lesson</b> ${esc(c.le)}</p></div></details></div></details>`)}</div>`;
   if (s.kind === 'skills') return `<div class="bk-k">Toolkit</div><h1 class="display bk-title">Skills</h1><div class="bk-body">${list(bk.skills, c => `<details class="bk-term"><summary><b>${esc(c.t)}</b><small>${esc(c.what)}</small></summary><div>
       <p><b>Why it matters</b> ${esc(c.why)}</p><p><b>When to use it</b> ${esc(c.when)}</p><ol>${(c.steps || []).map(x => `<li>${esc(x)}</li>`).join('')}</ol><p><b>Example</b> ${esc(c.ex)}</p><p><b>Try it</b> ${esc(c.task)}</p><p><b>Common mistakes</b> ${esc(c.mist)}</p></div></details>`)}</div>`;
@@ -219,6 +222,9 @@ function renderSection(id, bk, s, p) {
       <p><b>Why</b> ${esc(c.why)}</p><p><b>When</b> ${esc(c.when)}</p><p><b>How</b> ${esc(c.how)}</p>${c.ex ? `<p><b>Example</b> ${esc(c.ex)}</p>` : ''}</div></details>`)}</div>`;
   if (s.kind === 'tpl') return `<div class="bk-k">Toolkit</div><h1 class="display bk-title">Templates</h1><div class="bk-body">${list(bk.tpl, (c, i) => `<details class="bk-term"><summary><b>${esc(c.t)}</b><small>Ready to copy</small></summary><div><pre class="bk-pre">${esc(c.body)}</pre><button class="btn sm" data-act="bkCopy" data-i="${i}">Copy</button></div></details>`)}</div>`;
   if (s.kind === 'sims') return `<div class="bk-k">Toolkit</div><h1 class="display bk-title">Simulations</h1><div class="bk-body">${list(bk.sims, (c, i) => { const ch = (p.check['sim' + i]); return `<div class="bk-sim"><b class="display">${esc(c.t)}</b><p>${esc(c.scn)}</p><div class="lx-opts">${c.opts.map((o, oi) => `<button class="${ch === undefined ? '' : oi === ch ? (o[2] === 'best' ? 'ok' : o[2] === 'weak' ? 'bad' : 'mid') : ''}" data-act="bkSim" data-i="${i}" data-o="${oi}">${esc(o[0])}</button>`).join('')}</div>${ch !== undefined ? `<p class="bk-why"><b>${esc(c.opts[ch][2] === 'best' ? 'Best choice' : c.opts[ch][2] === 'strong' ? 'Strong choice' : 'Weak choice')}</b> ${esc(c.opts[ch][1])}</p>` : ''}</div>`; })}</div>`;
+  if (s.kind === 'ex') return `<div class="bk-k">Toolkit</div><h1 class="display bk-title">Exercises</h1><div class="bk-body"><p class="muted">Work each one out on paper or in a sheet first, then open the model answer and mark yourself honestly.</p>${list(bk.ex, (c, i) => { const m = p.check['ex' + i]; return `<div class="bk-sim"><span class="eyebrow">${esc(c.c || 'Exercise')} ${i + 1}</span><b class="display">${esc(c.t)}</b><div>${c.q}</div>
+      <details class="rv"><summary>Show the model answer</summary><div>${c.a}</div></details>
+      <div class="lx-opts bk-mark">${[['got', 'I got it'], ['part', 'Partly'], ['miss', 'Not yet']].map(([k, n]) => `<button class="${m === k ? (k === 'got' ? 'ok' : k === 'miss' ? 'bad' : 'mid') : ''}" data-act="bkExMark" data-i="${i}" data-k="${k}">${n}</button>`).join('')}</div></div>`; })}</div>`;
   if (s.kind === 'mq') return `<div class="bk-k">Toolkit</div><h1 class="display bk-title">Mansen questions</h1><div class="bk-body">${list(bk.mansenQ, q => `<details class="bk-term"><summary><b>${esc(q[0])}</b></summary><div><p>${esc(q[1] || '')}</p></div></details>`)}</div>`;
   if (s.kind === 'lv') return `<div class="bk-k">Toolkit</div><h1 class="display bk-title">Development levels</h1><div class="bk-body">${list(bk.levels, (l, i) => `<div class="bk-lv"><span class="num">${i + 1}</span><div><b>${esc(l[0])}</b><p>${esc(l[1])}</p><p class="muted">${esc(l[2] || '')}</p></div></div>`)}</div>`;
   if (s.kind === 'cmp') return `<div class="bk-k">Toolkit</div><h1 class="display bk-title">Mastery checklist</h1><div class="bk-body"><p class="muted">Tick each one when you can do it confidently.</p>${list(bk.completion, (c, i) => `<button class="bk-chk ${p.check['c' + i] ? 'on' : ''}" data-act="bkCheck" data-i="${i}"><span class="check ${p.check['c' + i] ? 'on' : ''}">${p.check['c' + i] ? icon('check', 13) : ''}</span>${esc(c)}</button>`)}</div>`;
@@ -419,6 +425,7 @@ export const BA = {
   bkQuiz(el) { const p = prog(B.id); if (!p) return; const sec = el.dataset.sec; p.quiz[sec] = p.quiz[sec] || {}; p.quiz[sec][+el.dataset.q] = +el.dataset.o; save(B.id, p, true); redraw(); },
   bkCat(el) { B.gcat = el.dataset.c; redraw(); },
   bkSim(el) { const p = prog(B.id); if (!p) return; p.check['sim' + el.dataset.i] = +el.dataset.o; save(B.id, p, true); redraw(); },
+  bkExMark(el) { const p = prog(B.id); if (!p) return; p.check['ex' + el.dataset.i] = el.dataset.k; save(B.id, p, true); redraw(); },
   bkCheck(el) { const p = prog(B.id); if (!p) return; const k = 'c' + el.dataset.i; p.check[k] = !p.check[k]; save(B.id, p, true); redraw(); },
   async bkCopy(el) { const [meta, bk] = getBook(B.id); try { await navigator.clipboard.writeText(bk.tpl[+el.dataset.i].body); toast('Template copied'); } catch (e) { toast('Select the text to copy it'); } }
 };
@@ -454,18 +461,30 @@ export function libraryView(uploads) {
   const head = `<div class="phead"><div><span class="eyebrow">Growth</span><h1 class="display" style="margin-top:10px">Library</h1><p class="muted">Your books and manuals. Private to your login, open offline, and every bookmark follows you between Mac and iPhone.</p></div></div>`;
   if (!idx) return head + wait();
   if (idx.__error) return head + `<div class="panel"><p class="muted">Sign in online once to unlock your books.</p></div>`;
-  const tiles = idx.books.map((b, i) => {
+  const seriesTiles = (idx.series || []).map(sr => {
+    const lv = sr.levels.filter(l => l.book && !l.locked);
+    const st = lv.map(l => ({ l, p: progress('book:' + l.book, redraw) || {} }));
+    const cur = st.slice().reverse().find(x => x.p.pos) || st[0];
+    const meta = cur ? idx.books.find(b => b.id === cur.l.book) : null;
+    const done = cur ? Object.keys(cur.p.done || {}).filter(k => k.startsWith('ch')).length : 0;
+    const pct = meta ? Math.round(done / meta.chapters * 100) : 0;
+    return `<a class="lb-book tone-${esc(sr.tone || 'green')}" href="#/series/${sr.id}">
+      <span class="lb-cover"><span class="lb-n">${esc(sr.mark || '')}</span><span class="lb-k">${sr.levels.length} levels</span><b class="display ${Math.max(...sr.title.split(' ').map(w => w.length)) > 10 ? 'long' : ''}">${esc(sr.title)}</b><span class="lb-lv">${sr.levels.map(l => `<i class="${l.locked ? '' : 'on'} ${cur && cur.l.n === l.n ? 'cur' : ''}"></i>`).join('')}</span></span>
+      <span class="lb-info"><small>${esc(sr.sub)}</small><span class="meter"><i style="width:${pct}%"></i></span>
+      <span class="lb-st"><b>${cur && cur.p.pos ? 'Continue' : 'Start'}</b><span>Level ${cur ? cur.l.n : 1} ${esc(cur ? cur.l.name : '')} · ${pct}%</span></span></span></a>`;
+  }).join('');
+  const tiles = idx.books.filter(b => !b.series).map((b, i) => {
     const bp = progress('book:' + b.id, redraw) || {};
     const done = Object.keys(bp.done || {}).filter(k => k.startsWith('ch')).length;
     const pct = Math.round(done / b.chapters * 100);
     const saved = (bp.marks || []).length + (bp.hls || []).length;
     const kind = b.id === 'dahua' ? 'Proposal' : KIND[b.kind] || 'Book';
     return `<a class="lb-book tone-${esc(b.tone || 'green')}" href="#/book/${b.id}">
-      <span class="lb-cover"><span class="lb-n">${String(i + 1).padStart(2, '0')}</span><span class="lb-k">${esc(kind)}</span><b class="display">${esc(b.title)}</b><i class="lb-mark"></i></span>
+      <span class="lb-cover"><span class="lb-n">${String(i + 1).padStart(2, '0')}</span><span class="lb-k">${esc(kind)}</span><b class="display ${Math.max(...b.title.split(' ').map(w => w.length)) > 10 ? 'long' : ''}">${esc(b.title)}</b><i class="lb-mark"></i></span>
       <span class="lb-info"><small>${esc(b.sub)}</small><span class="meter"><i style="width:${pct}%"></i></span>
       <span class="lb-st"><b>${bp.pos ? 'Continue' : 'Start'}</b><span>${pct}% · ${done} of ${b.chapters}${saved ? ' · ' + saved + ' saved' : ''}</span></span></span></a>`;
   }).join('');
-  return head + `<div class="lb-shelf">${tiles}</div>${uploads || ''}`;
+  return head + `${seriesTiles ? `<div class="ptitle" style="margin-top:6px"><i class="tick"></i><span class="eyebrow">Courses in five levels</span></div><div class="lb-shelf">${seriesTiles}</div><div class="ptitle" style="margin-top:44px"><i class="tick"></i><span class="eyebrow">Books and manuals</span></div>` : ''}<div class="lb-shelf">${tiles}</div>${uploads || ''}`;
 }
 
 // Home: books with where you left off, most recent first.
@@ -477,4 +496,37 @@ export function homeBooks() {
     const done = Object.keys(p.done || {}).filter(k => k.startsWith('ch')).length; const pct = Math.round(done / b.chapters * 100);
     return `<a class="doc" href="#/book/${b.id}" ${p.pos ? `data-act="bkResumeFrom" data-id="${b.id}"` : ''}><span class="bar"></span><span class="grow" style="min-width:0;flex:1"><span class="kind">${p.pos ? 'Continue' : 'Start'}</span><span class="dtitle" style="display:block">${esc(b.title)}</span></span><span class="faint" style="font-size:11px;white-space:nowrap">${pct}%</span></a>`;
   }).join('')}</div>`;
+}
+
+
+// SERIES: one subject in five levels. The page shows the scope and the journey, level by level.
+export function seriesView(parts) {
+  const [id] = parts; const idx = catalog(redraw);
+  if (!idx) return wait(); if (idx.__error) return `<div class="panel"><p class="muted">Sign in online once to unlock your books.</p></div>`;
+  const sr = (idx.series || []).find(x => x.id === id); if (!sr) return `<p class="muted">Not found.</p>`;
+  const sc = sr.scope || {};
+  const lv = sr.levels.map(l => {
+    const meta = l.book && idx.books.find(b => b.id === l.book);
+    const p = meta ? (progress('book:' + l.book, redraw) || {}) : {};
+    const done = Object.keys(p.done || {}).filter(k => k.startsWith('ch')).length; const pct = meta ? Math.round(done / meta.chapters * 100) : 0;
+    const open = meta && !l.locked;
+    return `<section class="sr-lv ${open ? 'open' : 'locked'}">
+      <div class="sr-n"><b class="display">${l.n}</b><span>Level</span></div>
+      <div class="sr-b"><span class="eyebrow">${open ? (p.pos ? 'In progress' : 'Open') : 'Locked'}${l.hours ? ' · about ' + esc(l.hours) : ''}</span><h3 class="display">${esc(l.name)}</h3><p>${esc(l.about)}</p>
+        ${(l.can || []).length ? `<ul class="sr-can">${l.can.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
+        ${(l.topics || []).length ? `<p class="sr-tp">${l.topics.map(t => `<span>${esc(t)}</span>`).join('')}</p>` : ''}
+        ${open ? `<div class="sr-go"><a class="btn primary" href="#/book/${l.book}" ${p.pos ? `data-act="bkResumeFrom" data-id="${l.book}"` : ''}>${icon('book', 15)}${p.pos ? 'Continue' : 'Start level ' + l.n}</a><a class="btn" href="#/book/${l.book}">Contents</a><span class="faint">${pct}% · ${done} of ${meta.chapters} chapters</span></div>` : `<div class="sr-go"><span class="faint">${icon('lock', 14)} ${esc(l.unlock || 'Opens when the level before is complete')}</span></div>`}
+      </div></section>`;
+  }).join('');
+  return `<section class="sr-hero tone-${esc(sr.tone || 'green')}"><a class="eyebrow" href="#/library">Library</a><h1 class="display">${esc(sr.title)}</h1><p>${esc(sr.sub)}</p></section>
+    <div class="sr-grid">
+      <section class="panel sr-scope"><div class="ptitle"><i class="tick"></i><span class="eyebrow">Scope</span></div>
+        ${sc.about ? `<p class="sr-lead">${esc(sc.about)}</p>` : ''}
+        ${(sc.covers || []).length ? `<h4>What the five levels cover</h4><ul>${sc.covers.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
+        ${(sc.not || []).length ? `<h4>What it does not cover</h4><ul class="faint">${sc.not.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
+        ${sc.method ? `<h4>How each level works</h4><p>${esc(sc.method)}</p>` : ''}
+        ${sc.standards ? `<h4>Aligned with</h4><p>${esc(sc.standards)}</p>` : ''}
+      </section>
+      <section class="sr-journey"><div class="ptitle"><i class="tick"></i><span class="eyebrow">The journey</span></div>${lv}</section>
+    </div>`;
 }

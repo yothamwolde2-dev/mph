@@ -1,12 +1,12 @@
 // MPH app: routing, rendering, actions, upload and the HTML reader.
-import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.5.0';
-import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG } from './store.js?v=0.5.0';
-import * as V from './views.js?v=0.5.0';
-import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.5.0';
-import { LA, learningHub, langView, stopSpeech } from './lang.js?v=0.5.0';
-import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView } from './book.js?v=0.5.0';
-import { warmContent } from './content.js?v=0.5.0';
-import { planView, PA, PC, taskMenu, addTaskMenu } from './plan.js?v=0.5.0';
+import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.6.0';
+import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG } from './store.js?v=0.6.0';
+import * as V from './views.js?v=0.6.0';
+import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.6.0';
+import { LA, learningHub, langView, stopSpeech } from './lang.js?v=0.6.0';
+import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView, seriesView } from './book.js?v=0.6.0';
+import { warmContent } from './content.js?v=0.6.0';
+import { planView, PA, PC, taskMenu, addTaskMenu } from './plan.js?v=0.6.0';
 
 const $app = document.getElementById('app');
 const $layer = document.getElementById('layer');
@@ -32,7 +32,7 @@ function render() {
   const base = r.split('/')[0];
   if (base === 'tasks' || base === 'week') { location.replace('#/plan'); return; }
   const inner = base === 'projects' ? V.projects(ui) : base === 'plan' ? planView()
-    : base === 'learning' ? learningHub() : base === 'lang' ? langView(r.split('/').slice(1)) : base === 'book' ? bookView(r.split('/').slice(1))
+    : base === 'learning' ? learningHub() : base === 'lang' ? langView(r.split('/').slice(1)) : base === 'book' ? bookView(r.split('/').slice(1)) : base === 'series' ? seriesView(r.split('/').slice(1))
     : base === 'library' ? libraryView(store.state.docs.length ? V.shelf('library', ui, true) : '') : base === 'settings' ? V.settings(ui) : V.home(ui);
   const inner2 = base === 'home' ? installBanner() + inner : inner;
   const a = document.activeElement; const fk = a && a.dataset ? a.dataset.k : null;
