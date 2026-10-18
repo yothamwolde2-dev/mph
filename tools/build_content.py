@@ -114,6 +114,60 @@ def hsk3():
     return {'id': 'hsk3', 'lang': 'zh', 'name': 'HSK 3', 'words': words, 'grammar': grammar, 'dialogs': dialogs, 'passages': passages, 'sentences': []}
 
 
+# Levels written as plain text files (German A1, Afaan Oromo level 1, and future levels).
+# prefix_words*.txt   h|forms|pos|meaning|topic|example|example romanised (empty)|example English
+# prefix_dialogs.txt  # title|English title, then speaker|line|romanised|English, then ?question|English|a;b;c;d|answer
+# prefix_passages.txt # title|English title, then line|romanised|English, then questions
+# prefix_grammar.txt  # title|pattern|meaning|how|mistake, then example|romanised|English
+# prefix_exercises.txt # title|grammar point|intro, then ?question|hint|a;b;c|answer|why|audio or =question|hint|answer;also accepted|why|audio
+def textlevel(prefix, lid, name, tag):
+    import glob
+    words = []
+    for f in sorted(glob.glob(src(prefix + '_words*.txt'))):
+        for line in open(f, encoding='utf-8').read().strip().split('\n'):
+            x = line.split('|')
+            if len(x) < 8: continue
+            words.append({'id': tag + 'w:' + x[0], 'h': x[0], 'p': x[1], 'pos': x[2], 'm': x[3], 'topic': x[4], 'ex': {'h': x[5], 'p': x[6], 'e': x[7]}})
+
+    def qs(lines):
+        out = []
+        for x in lines:
+            f = x.split('|')
+            out.append({'qh': f[0], 'qe': f[1], 'o': f[2].split(';'), 'a': int(f[3])})
+        return out
+
+    def rd(name):
+        p = src(prefix + '_' + name + '.txt')
+        return open(p, encoding='utf-8').read() if os.path.exists(p) else ''
+    dialogs = []
+    for i, b in enumerate(blocks(rd('dialogs'))):
+        t, te = b['head'].split('|')
+        dialogs.append({'id': tag + 'd:%d' % i, 't': t, 'te': te, 'lines': [dict(zip(['s', 'h', 'p', 'e'], r.split('|'))) for r in b['rows']], 'q': qs(b['q'])})
+    passages = []
+    for i, b in enumerate(blocks(rd('passages'))):
+        t, te = b['head'].split('|')
+        passages.append({'id': tag + 'p:%d' % i, 't': t, 'te': te, 'lines': [dict(zip(['h', 'p', 'e'], r.split('|'))) for r in b['rows']], 'q': qs(b['q'])})
+    grammar = []
+    for i, b in enumerate(blocks(rd('grammar'))):
+        t, p_, m, h, x = b['head'].split('|')
+        grammar.append({'id': tag + 'g:%d' % i, 't': t, 'p': p_, 'm': m, 'h': h, 'x': x, 'ex': [dict(zip(['h', 'p', 'e'], r.split('|'))) for r in b['rows']]})
+    exercises = []
+    cur = None
+    for line in rd('exercises').split('\n'):
+        line = line.rstrip()
+        if not line: continue
+        if line.startswith('# '):
+            t, g, intro = (line[2:].split('|') + ['', ''])[:3]
+            cur = {'id': tag + 'x:%d' % len(exercises), 't': t, 'g': g, 'intro': intro, 'items': []}; exercises.append(cur)
+        elif line.startswith('?'):
+            f = line[1:].split('|')
+            cur['items'].append({'q': f[0], 'qe': f[1], 'o': f[2].split(';'), 'a': int(f[3]), 'e': f[4] if len(f) > 4 else '', 'h': f[5] if len(f) > 5 else ''})
+        elif line.startswith('='):
+            f = line[1:].split('|')
+            cur['items'].append({'q': f[0], 'qe': f[1], 'a': f[2].split(';'), 'e': f[3] if len(f) > 3 else '', 'h': f[4] if len(f) > 4 else ''})
+    return {'id': lid, 'name': name, 'words': words, 'grammar': grammar, 'dialogs': dialogs, 'passages': passages, 'sentences': [], 'exercises': exercises}
+
+
 def book():
     return json.load(open(src('book_raw.json')))
 
@@ -157,6 +211,10 @@ if __name__ == '__main__':
     sizes['zh-hsk2'] = lock('zh-hsk2', h2)
     sizes['zh-hsk3'] = lock('zh-hsk3', h3)
     sizes['book-cm1'] = lock('book-cm1', bk)
+    de1 = textlevel('de_a1', 'a1', 'A1', 'de1')
+    om1 = textlevel('om_l1', 'l1', 'Level 1', 'om1')
+    sizes['de-a1'] = lock('de-a1', de1)
+    sizes['om-l1'] = lock('om-l1', om1)
     cf, dh = coffee(), dahua()
     sizes['book-coffee'] = lock('book-coffee', cf)
     sizes['book-dahua'] = lock('book-dahua', dh)
@@ -168,8 +226,19 @@ if __name__ == '__main__':
                 {'id': 'hsk3', 'name': 'HSK 3', 'file': 'zh-hsk3', 'v': 1, 'size': sizes['zh-hsk3'], 'counts': {'words': len(h3['words']), 'dialogs': len(h3['dialogs']), 'grammar': len(h3['grammar'])}},
                 {'id': 'hsk4', 'name': 'HSK 4', 'locked': True},
                 {'id': 'hsk5', 'name': 'HSK 5', 'locked': True}]},
-            {'id': 'de', 'name': 'German', 'native': 'Deutsch', 'voice': 'de-DE', 'locked': True, 'levels': []},
-            {'id': 'om', 'name': 'Afaan Oromo', 'native': 'Afaan Oromoo', 'voice': 'om', 'locked': True, 'levels': []}],
+            {'id': 'de', 'name': 'German', 'native': 'Deutsch', 'voice': 'de-DE',
+             'ui': {'script': 'Deutsch', 'roman': None, 'recall': 'Say or write it in German', 'hear': 'Choose the word you hear', 'search': 'Search German or English', 'latin': True, 'reading': True},
+             'levels': [
+                {'id': 'a1', 'name': 'A1', 'file': 'de-a1', 'v': 1, 'size': sizes['de-a1'], 'counts': {'words': len(de1['words']), 'dialogs': len(de1['dialogs']), 'grammar': len(de1['grammar'])}},
+                {'id': 'a2', 'name': 'A2', 'locked': True},
+                {'id': 'b1', 'name': 'B1', 'locked': True}]},
+            {'id': 'om', 'name': 'Afaan Oromo', 'native': 'Afaan Oromoo', 'voice': 'om-ET',
+             'ui': {'script': 'Oromoo', 'roman': None, 'recall': 'Say or write it in Afaan Oromo', 'hear': 'Choose the word you hear', 'search': 'Search Afaan Oromo or English', 'latin': True, 'reading': True, 'noaudio': True,
+                    'novoice': 'Phones and Macs have no Afaan Oromo voice yet, so read the lines aloud yourself.'},
+             'note': 'Level 1 is written in standard Qubee spelling. Practise speaking with a native speaker, who can also confirm pronunciation.',
+             'levels': [
+                {'id': 'l1', 'name': 'Level 1', 'file': 'om-l1', 'v': 1, 'size': sizes['om-l1'], 'counts': {'words': len(om1['words']), 'dialogs': len(om1['dialogs']), 'grammar': len(om1['grammar'])}},
+                {'id': 'l2', 'name': 'Level 2', 'locked': True}]}],
         'books': [
             {'id': 'cm1', 'title': 'Corporate Management', 'sub': 'Book 1 · How companies work, from structure to strategy', 'file': 'book-cm1', 'v': 1, 'size': sizes['book-cm1'], 'chapters': len(bk['ch']), 'kind': 'study', 'tone': 'green'},
             {'id': 'coffee', 'title': cf['title'], 'sub': cf['sub'], 'file': 'book-coffee', 'v': 1, 'size': sizes['book-coffee'], 'chapters': len(cf['sections']), 'kind': 'web', 'tone': 'coffee'},

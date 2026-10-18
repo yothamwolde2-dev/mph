@@ -1,7 +1,8 @@
-// MPH Languages: Chinese (HSK 2, HSK 3; HSK 4 and 5 locked), German and Afaan Oromo to come.
+// MPH Languages: Chinese (HSK 2, HSK 3; HSK 4 and 5 locked), German (A1), Afaan Oromo (level 1).
+// Each language says in the catalog how its screens are labelled (ui) and which device voice reads it (voice).
 // Flashcards with spaced repetition, dialogs with audio, listening drills, grammar, words.
-import { esc, icon } from './core.js?v=0.4.0';
-import { catalog, peek, progress, saveProgress } from './content.js?v=0.4.0';
+import { esc, icon } from './core.js?v=0.5.0';
+import { catalog, peek, progress, saveProgress } from './content.js?v=0.5.0';
 
 const redraw = () => window.dispatchEvent(new Event('mph:redraw'));
 const toast = (t, undo) => window.dispatchEvent(new CustomEvent('mph:toast', { detail: { text: t, undo } }));
@@ -20,19 +21,29 @@ let voices = [];
 function loadVoices() { try { voices = speechSynthesis.getVoices(); } catch (e) { voices = []; } }
 if ('speechSynthesis' in window) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
 function voicesFor(lang) {
-  const base = lang.split('-')[0];
-  const vs = voices.filter(v => v.lang && v.lang.replace('_', '-').toLowerCase().startsWith(base));
-  const pref = vs.filter(v => /zh.?CN|cmn/i.test(v.lang));
-  return (pref.length ? pref : vs);
+  const want = lang.replace('_', '-').toLowerCase(); const base = want.split('-')[0];
+  const norm = v => (v.lang || '').replace('_', '-').toLowerCase();
+  const vs = voices.filter(v => norm(v).startsWith(base));
+  const exact = vs.filter(v => norm(v) === want || (base === 'zh' && /cmn/.test(norm(v))));
+  const local = (exact.length ? exact : vs);
+  // voices stored on the device first: they work offline and sound better
+  return local.filter(v => v.localService).concat(local.filter(v => !v.localService));
 }
+const VOICE = () => (L.lang && L.lang.voice) || 'zh-CN';
+const UI = () => Object.assign({ script: '汉字', roman: 'Pinyin', recall: 'Say or write it in Chinese', hear: 'Choose the characters you hear', search: 'Search characters, pinyin or English', latin: false }, (L.lang && L.lang.ui) || {});
+let warned = false;
 let playing = null;
 export function stopSpeech() { try { speechSynthesis.cancel(); } catch (e) {} playing = null; document.querySelectorAll('.speaking').forEach(e => e.classList.remove('speaking')); }
 function say(text, opts = {}) {
   return new Promise(res => {
     if (!('speechSynthesis' in window)) { toast('This device has no speech voice'); return res(); }
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = opts.lang || 'zh-CN';
+    u.lang = opts.lang || VOICE();
     const vs = voicesFor(u.lang);
+    if (!vs.length && voices.length) {
+      if (!warned) { warned = true; toast(UI().novoice || 'No voice for this language on this device yet. Add one in the device settings under Spoken Content.'); }
+      if (UI().novoice) return res();
+    }
     if (vs.length) u.voice = vs[(opts.voice || 0) % vs.length];
     u.rate = opts.rate || P.speed;
     if (opts.pitch) u.pitch = opts.pitch;
@@ -48,7 +59,7 @@ async function playLines(lines, from = 0, token) {
     document.querySelectorAll('.speaking').forEach(e => e.classList.remove('speaking'));
     const row = document.querySelector(`[data-line="${i}"]`); if (row) { row.classList.add('speaking'); row.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
     const si = speakers.indexOf(lines[i].s || 'A');
-    await say(lines[i].h, { voice: si, pitch: voicesFor('zh').length > 1 ? 1 : [1, 0.85, 1.15][si % 3] });
+    await say(lines[i].h, { voice: si, pitch: voicesFor(VOICE()).length > 1 ? 1 : [1, 0.85, 1.15][si % 3] });
     if (playing !== me) return;
     await new Promise(r => setTimeout(r, 350));
   }
@@ -72,9 +83,9 @@ function rate(card, g) {
 const preview = (card, g) => { if (g === 0) return 'In a few cards'; const c = rate(card, g); return c.iv === 1 ? '1 day' : c.iv < 30 ? c.iv + ' days' : Math.round(c.iv / 30) + ' mo'; };
 
 // STATE
-const L = { lang: null, level: null, tab: 'cards', sess: null, dlg: null, drill: null, gram: null, q: '', reveal: {} };
+const L = { lang: null, level: null, tab: 'cards', sess: null, dlg: null, drill: null, gram: null, q: '', reveal: {}, exa: {} };
 const PK = lang => 'lang:' + lang;
-function prog(lang) { const p = progress(PK(lang), redraw); if (!p) return null; p.cards = p.cards || {}; p.dlg = p.dlg || {}; p.days = p.days || {}; p.drills = p.drills || {}; return p; }
+function prog(lang) { const p = progress(PK(lang), redraw); if (!p) return null; p.cards = p.cards || {}; p.dlg = p.dlg || {}; p.days = p.days || {}; p.drills = p.drills || {}; p.ex = p.ex || {}; return p; }
 function save(lang, p, now) { saveProgress(PK(lang), p, now); }
 function bumpDay(p, n = 1) { const k = new Date().toISOString().slice(0, 10); p.days[k] = (p.days[k] || 0) + n; }
 function streak(p) { let s = 0; const d = new Date(); for (;;) { const k = d.toISOString().slice(0, 10); if (p.days[k]) { s++; d.setDate(d.getDate() - 1); } else break; } return s; }
@@ -124,7 +135,9 @@ export function langView(parts) {
   const p = prog(langId); const data = levelData(lv);
   const chips = lvls.map(v => v.locked ? `<button class="lx-chip locked" data-act="lxLockedLevel" data-n="${esc(v.name)}">${icon('lock', 13)}${esc(v.name)}</button>`
     : `<a class="lx-chip ${v.id === lv.id ? 'on' : ''}" href="#/lang/${langId}/${v.id}/${t}">${esc(v.name)}</a>`).join('');
-  const tabs = [['cards', 'Flashcards'], ['dialogs', 'Dialogs'], ['listen', 'Listening'], ['grammar', 'Grammar'], ['words', 'Words']]
+  const hasEx = data && !data.__error && data.exercises && data.exercises.length;
+  const noaudio = lang.ui && lang.ui.noaudio;
+  const tabs = [['cards', 'Flashcards'], ['dialogs', (data && data.passages && data.passages.length && lang.ui && lang.ui.reading) ? 'Dialogs and reading' : 'Dialogs'], ...(noaudio ? [] : [['listen', 'Listening']]), ['grammar', 'Grammar'], ...(hasEx ? [['practice', 'Exercises']] : []), ['words', 'Words']]
     .map(([id, n]) => `<a class="lx-tab ${t === id ? 'on' : ''}" href="#/lang/${langId}/${lv.id}/${id}">${n}</a>`).join('');
   let body = loading('Unlocking ' + lv.name);
   if (data && data.__error) body = err();
@@ -135,10 +148,11 @@ export function langView(parts) {
       : t === 'dialogs' ? (sub !== undefined ? dialogView(langId, lv, data, p, +sub) : dialogList(langId, lv, data, p))
       : t === 'listen' ? listenView(langId, lv, data, p, sub)
       : t === 'grammar' ? (sub !== undefined ? grammarPoint(langId, lv, data, +sub) : grammarList(langId, lv, data))
+      : t === 'practice' ? (sub !== undefined ? exerciseSet(langId, lv, data, p, +sub) : exerciseList(langId, lv, data, p))
       : wordsView(langId, lv, data, p));
   }
-  return `<div class="lx-head"><div><a class="eyebrow" href="#/learning">Learning</a><h1 class="display">${esc(lang.name)} <span class="lx-n">${esc(lang.native)}</span></h1></div><div class="lx-chips">${chips}</div></div>
-    <nav class="lx-tabs">${tabs}</nav><div class="lx-body">${body}</div>`;
+  return `<div class="lang-${esc(langId)} ${UI().latin ? 'latin' : ''}"><div class="lx-head"><div><a class="eyebrow" href="#/learning">Learning</a><h1 class="display">${esc(lang.name)} <span class="lx-n">${esc(lang.native)}</span></h1></div><div class="lx-chips">${chips}</div></div>
+    <nav class="lx-tabs">${tabs}</nav>${lang.note ? `<p class="lx-note faint">${esc(lang.note)}</p>` : ''}<div class="lx-body">${body}</div></div>`;
 }
 
 // FLASHCARDS
@@ -157,7 +171,7 @@ function cardsView(langId, lv, data, p) {
   const s = L.sess && L.sess.lv === lv.id ? L.sess : null;
   if (!s) {
     const today = DAY();
-    const modes = [['read', 'Read', 'Character to meaning'], ['listen', 'Listen', 'Sound to meaning'], ['recall', 'Recall', 'Meaning to character']];
+    const modes = [['read', 'Read', UI().latin ? 'Word to meaning' : 'Character to meaning'], ['listen', 'Listen', 'Sound to meaning'], ['recall', 'Recall', UI().latin ? 'Meaning to word' : 'Meaning to character']].filter(m => !(UI().noaudio && m[0] === 'listen'));
     const dueOf = m => data.words.filter(w => { const c = p.cards[w.id + '|' + m]; return c && c.due <= today; }).length;
     const newOf = m => data.words.filter(w => !p.cards[w.id + '|' + m]).length;
     const gDue = data.grammar.filter(g => { const c = p.cards[g.id + '|g']; return c && c.due <= today; }).length;
@@ -181,7 +195,7 @@ function cardsView(langId, lv, data, p) {
   } else {
     const w = it.w;
     if (s.mode === 'listen') front = `<button class="lx-play" data-act="lxSay" data-t="${esc(w.h)}" aria-label="Play">${icon('sound', 34)}</button><span class="lx-hint">Listen, then say what it means</span>`;
-    else if (s.mode === 'recall') front = `<span class="eyebrow">${esc(w.pos)}</span><b class="lx-en">${esc(w.m)}</b><span class="lx-hint">Say or write it in Chinese</span>`;
+    else if (s.mode === 'recall') front = `<span class="eyebrow">${esc(w.pos)}</span><b class="lx-en">${esc(w.m)}</b><span class="lx-hint">${esc(UI().recall)}</span>`;
     else front = `<b class="lx-hz">${esc(w.h)}</b><span class="lx-hint">What does it mean?</span>`;
     back = `<b class="lx-hz">${esc(w.h)}</b><span class="lx-py">${esc(w.p)}</span><span class="lx-mean">${esc(w.m)}</span><span class="faint" style="font-size:12px">${esc(w.pos)}</span>
       <button class="lx-ex" data-act="lxSay" data-t="${esc(w.ex.h)}">${icon('sound', 15)}<span><b>${esc(w.ex.h)}</b><small>${esc(w.ex.p)}</small><small>${esc(w.ex.e)}</small></span></button>`;
@@ -208,16 +222,16 @@ function dialogView(langId, lv, data, p, idx) {
   const ans = (L.answers && L.answers[d.id]) || {};
   const lines = d.lines.map((l, i) => `<button class="lx-line" data-line="${i}" data-act="lxLine" data-i="${i}">
       ${l.s ? `<span class="lx-spk s${'ABC'.indexOf(l.s)}">${esc(l.s)}</span>` : ''}
-      <span class="grow">${hide ? `<span class="lx-hidden">${icon('sound', 14)} Line ${i + 1}</span>` : `${P.hz ? `<b>${esc(l.h)}</b>` : ''}${P.py ? `<small class="py">${esc(l.p)}</small>` : ''}${P.en ? `<small>${esc(l.e)}</small>` : ''}`}</span></button>`).join('');
+      <span class="grow">${hide ? `<span class="lx-hidden">${icon('sound', 14)} Line ${i + 1}</span>` : `${P.hz ? `<b>${esc(l.h)}</b>` : ''}${P.py && UI().roman && l.p ? `<small class="py">${esc(l.p)}</small>` : ''}${P.en ? `<small>${esc(l.e)}</small>` : ''}`}</span></button>`).join('');
   const qs = d.q.map((q, qi) => { const a = ans[qi]; return `<div class="lx-q"><b>${qi + 1}. ${esc(q.qe)}</b><button class="lx-qzh" data-act="lxSay" data-t="${esc(q.qh)}">${icon('sound', 13)}${esc(q.qh)}</button>
       <div class="lx-opts">${q.o.map((o, oi) => `<button class="${a === undefined ? '' : oi === q.a ? 'ok' : oi === a ? 'bad' : ''}" data-act="lxAns" data-d="${d.id}" data-q="${qi}" data-o="${oi}" ${a !== undefined ? 'disabled' : ''}>${esc(o)}</button>`).join('')}</div></div>`; }).join('');
   const done = d.q.length && Object.keys(ans).length === d.q.length;
   const score = d.q.filter((q, qi) => ans[qi] === q.a).length;
   return `<div class="lx-dhead"><a class="iconbtn" href="#/lang/${langId}/${lv.id}/dialogs" aria-label="Back">${icon('left', 16)}</a><div class="grow"><b class="display">${esc(d.te)}</b><small class="lx-zh">${esc(d.t)}</small></div></div>
     <div class="lx-ctrl">
-      <button class="btn primary" data-act="lxPlayAll">${icon(playing ? 'pause' : 'play', 15)}${playing ? 'Stop' : 'Play all'}</button>
-      <span class="seg">${[0.7, 0.85, 1].map(r => `<button class="${P.speed === r ? 'on' : ''}" data-act="lxSpeed" data-r="${r}">${r === 1 ? 'Normal' : r === 0.85 ? 'Steady' : 'Slow'}</button>`).join('')}</span>
-      <span class="seg"><button class="${hide ? 'on' : ''}" data-act="lxHide" data-d="${d.id}">Listen only</button><button class="${P.hz ? 'on' : ''}" data-act="lxTog" data-k="hz">汉字</button><button class="${P.py ? 'on' : ''}" data-act="lxTog" data-k="py">Pinyin</button><button class="${P.en ? 'on' : ''}" data-act="lxTog" data-k="en">English</button></span>
+      ${UI().noaudio ? '' : `<button class="btn primary" data-act="lxPlayAll">${icon(playing ? 'pause' : 'play', 15)}${playing ? 'Stop' : 'Play all'}</button>
+      <span class="seg">${[0.7, 0.85, 1].map(r => `<button class="${P.speed === r ? 'on' : ''}" data-act="lxSpeed" data-r="${r}">${r === 1 ? 'Normal' : r === 0.85 ? 'Steady' : 'Slow'}</button>`).join('')}</span>`}
+      <span class="seg">${UI().noaudio ? '' : `<button class="${hide ? 'on' : ''}" data-act="lxHide" data-d="${d.id}">Listen only</button>`}<button class="${P.hz ? 'on' : ''}" data-act="lxTog" data-k="hz">${esc(UI().script)}</button>${UI().roman ? `<button class="${P.py ? 'on' : ''}" data-act="lxTog" data-k="py">${esc(UI().roman)}</button>` : ''}<button class="${P.en ? 'on' : ''}" data-act="lxTog" data-k="en">English</button></span>
     </div>
     <div class="lx-lines">${lines}</div>
     ${d.q.length ? `<div class="lx-qs"><div class="ptitle"><i class="tick"></i><span class="eyebrow">Questions</span>${done ? `<span class="sp"></span><b class="num">${score} / ${d.q.length}</b>` : ''}</div>${qs}
@@ -226,7 +240,7 @@ function dialogView(langId, lv, data, p, idx) {
 
 // LISTENING DRILLS
 const DRILLS = [
-  ['word', 'Hear the word', 'Choose the characters you hear'],
+  ['word', 'Hear the word', null],
   ['meaning', 'Hear the sentence', 'Choose what the sentence means'],
   ['dialog', 'Dialog challenge', 'Listen to a whole dialog without text, then answer'],
   ['passage', 'Listening passages', 'Longer talks and announcements']
@@ -248,7 +262,7 @@ function listenView(langId, lv, data, p, sub) {
   const dr = L.drill && L.drill.lv === lv.id ? L.drill : null;
   if (!dr) {
     return `<div class="lx-decks">${DRILLS.map(([k, n, d]) => { const best = p.drills[lv.id + ':' + k]; return `<button class="lx-deck" data-act="lxDrill" data-k="${k}">
-      <span class="eyebrow">Listening</span><b class="display">${n}</b><small>${d}</small><span class="lx-dn">${best ? `Best <em>${best}</em>` : 'Not tried yet'}</span></button>`; }).join('')}</div>`;
+      <span class="eyebrow">Listening</span><b class="display">${n}</b><small>${d || esc(UI().hear)}</small><span class="lx-dn">${best ? `Best <em>${best}</em>` : 'Not tried yet'}</span></button>`; }).join('')}</div>`;
   }
   if (dr.kind === 'dialog' || dr.kind === 'passage') {
     const list = dr.kind === 'dialog' ? data.dialogs : (data.passages || []);
@@ -282,13 +296,41 @@ function grammarPoint(langId, lv, data, i) {
       <div class="lx-exs">${g.ex.map(e => `<button class="lx-ex" data-act="lxSay" data-t="${esc(e.h)}">${icon('sound', 15)}<span><b>${esc(e.h)}</b><small>${esc(e.p)}</small><small>${esc(e.e)}</small></span></button>`).join('')}</div></div>`;
 }
 
+// EXERCISES: choose the right form, or type it. Explanations after every answer.
+const hash = t => { let h = 7; for (const c of String(t)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
+const norm = s => String(s).trim().toLowerCase().replace(/\s+/g, ' ').replace(/[.!?]$/, '');
+function exerciseList(langId, lv, data, p) {
+  return `<div class="lx-list">${data.exercises.map((x, i) => { const r = p.ex[x.id]; return `<a class="lx-row" href="#/lang/${langId}/${lv.id}/practice/${i}">
+    <span class="lx-gp">${String(i + 1).padStart(2, '0')}</span><span class="grow"><b>${esc(x.t)}</b><small>${x.items.length} questions${x.g ? ' · ' + esc(x.g) : ''}</small></span>
+    <span class="lx-score">${r ? `${r.score >= r.of * 0.8 ? icon('check', 14) : ''}${r.score}/${r.of}` : ''}</span></a>`; }).join('')}</div>`;
+}
+function exerciseSet(langId, lv, data, p, i) {
+  const x = data.exercises[i]; if (!x) return '';
+  const A = L.exa[x.id] = L.exa[x.id] || {};
+  const items = x.items.map((q, qi) => {
+    const a = A[qi]; const answered = a !== undefined;
+    const ok = answered && (q.o ? a === q.a : (Array.isArray(q.a) ? q.a : [q.a]).some(v => norm(v) === norm(a)));
+    const order = q.o ? q.o.map((o, oi) => oi).sort((x, y) => hash(q.q + x) - hash(q.q + y)) : [];
+    const body = q.o ? `<div class="lx-opts">${order.map(oi => [q.o[oi], oi]).map(([o, oi]) => `<button class="${!answered ? '' : oi === q.a ? 'ok' : oi === a ? 'bad' : ''}" data-act="lxEx" data-x="${x.id}" data-q="${qi}" data-o="${oi}" ${answered ? 'disabled' : ''}>${esc(o)}</button>`).join('')}</div>`
+      : `<div class="addline lx-type"><input class="field ${answered ? (ok ? 'ok' : 'bad') : ''}" data-k="ex-${x.id}-${qi}" data-enter="lxExType" data-x="${x.id}" data-q="${qi}" value="${esc(answered ? a : '')}" ${answered ? 'disabled' : ''} placeholder="Type your answer" autocomplete="off" autocapitalize="off" spellcheck="false">${answered ? '' : `<button class="btn" data-act="lxExType" data-x="${x.id}" data-q="${qi}">Check</button>`}</div>`;
+    const fb = answered ? `<p class="bk-why"><b>${ok ? 'Right.' : 'Answer: ' + esc(q.o ? q.o[q.a] : (Array.isArray(q.a) ? q.a[0] : q.a))}</b> ${esc(q.e || '')}${q.h ? ` <button class="lx-qzh" data-act="lxSay" data-t="${esc(q.h)}">${icon('sound', 13)}${esc(q.h)}</button>` : ''}</p>` : '';
+    return `<div class="lx-q"><b>${qi + 1}. ${esc(q.q)}</b>${q.qe ? `<small class="faint" style="display:block;margin-top:4px">${esc(q.qe)}</small>` : ''}${body}${fb}</div>`;
+  }).join('');
+  const n = Object.keys(A).length; const done = n === x.items.length;
+  const score = x.items.filter((q, qi) => A[qi] !== undefined && (q.o ? A[qi] === q.a : (Array.isArray(q.a) ? q.a : [q.a]).some(v => norm(v) === norm(A[qi])))).length;
+  return `<div class="lx-dhead"><a class="iconbtn" href="#/lang/${langId}/${lv.id}/practice" aria-label="Back">${icon('left', 16)}</a><div class="grow"><b class="display">${esc(x.t)}</b>${x.g ? `<small class="faint">${esc(x.g)}</small>` : ''}</div>
+      ${i < data.exercises.length - 1 ? `<a class="btn sm" href="#/lang/${langId}/${lv.id}/practice/${i + 1}">Next set</a>` : ''}</div>
+    ${x.intro ? `<p class="muted" style="margin:0 0 14px">${esc(x.intro)}</p>` : ''}
+    <div class="lx-qs">${items}${done ? `<div class="lx-exdone"><b class="display">${score} / ${x.items.length}</b><span class="muted">${score === x.items.length ? 'Perfect.' : score >= x.items.length * 0.8 ? 'Strong. Review the ones you missed.' : 'Read the grammar point again, then retry.'}</span><button class="btn" data-act="lxExRetry" data-x="${x.id}">Try again</button></div>` : ''}</div>`;
+}
+
 // WORDS
 function wordsView(langId, lv, data, p) {
   const q = (L.q || '').trim().toLowerCase();
   const today = DAY();
-  const list = data.words.filter(w => !q || w.h.includes(q) || w.p.toLowerCase().replace(/[^a-z ]/g, '').includes(q.replace(/[^a-z ]/g, '')) || w.p.toLowerCase().includes(q) || w.m.toLowerCase().includes(q));
+  const list = data.words.filter(w => !q || w.h.toLowerCase().includes(q) || w.p.toLowerCase().replace(/[^a-z ]/g, '').includes(q.replace(/[^a-z ]/g, '')) || w.p.toLowerCase().includes(q) || w.m.toLowerCase().includes(q));
   const st = w => { const c = p.cards[w.id + '|read']; return !c ? ['new', 'New'] : c.iv >= 21 ? ['known', 'Mastered'] : c.due <= today ? ['due', 'Due'] : ['learn', 'Learning']; };
-  return `<div class="addline" style="margin:0 0 14px"><input class="field" id="lxq" value="${esc(L.q)}" placeholder="Search characters, pinyin or English" autocomplete="off"></div>
+  return `<div class="addline" style="margin:0 0 14px"><input class="field" id="lxq" value="${esc(L.q)}" placeholder="${esc(UI().search)}" autocomplete="off"></div>
     <div class="lx-words">${list.map(w => { const [c, n] = st(w); return `<button class="lx-word" data-act="lxSay" data-t="${esc(w.h)}"><b>${esc(w.h)}</b><span class="grow"><small class="py">${esc(w.p)}</small><small>${esc(w.m)}</small></span><span class="lx-st ${c}">${n}</span></button>`; }).join('')}</div>`;
 }
 
@@ -352,8 +394,23 @@ export const LA = {
     if (dr.i === dr.items.length - 1 && p) { const k = lv.id + ':' + dr.kind; const prev = parseInt(p.drills[k] || '0', 10) || 0; p.drills[k] = Math.max(prev, dr.score) + '/' + dr.items.length; bumpDay(p); save(lang, p, true); }
     redraw();
   },
+  lxEx(el) { exAnswer(el.dataset.x, +el.dataset.q, +el.dataset.o); },
+  lxExType(el) { const inp = el.tagName === 'INPUT' ? el : document.querySelector(`[data-k="ex-${el.dataset.x}-${el.dataset.q}"]`); if (!inp || !inp.value.trim()) return; exAnswer(el.dataset.x, +el.dataset.q, inp.value.trim()); },
+  lxExRetry(el) { L.exa[el.dataset.x] = {}; redraw(); },
   lxNext() { const dr = L.drill; if (!dr) return; dr.i++; dr.chosen = undefined; redraw(); if (dr.i < dr.items.length) setTimeout(() => say(dr.items[dr.i].say), 200); }
 };
+function exAnswer(xid, qi, a) {
+  const [lang, lv, data, p] = Lx(); if (!data || !p) return;
+  const x = data.exercises.find(e => e.id === xid); if (!x) return;
+  const A = L.exa[xid] = L.exa[xid] || {}; if (A[qi] !== undefined) return; A[qi] = a;
+  const q = x.items[qi]; if (q.h && (q.o ? a === q.a : true)) say(q.h);
+  if (Object.keys(A).length === x.items.length) {
+    const score = x.items.filter((q, i) => q.o ? A[i] === q.a : (Array.isArray(q.a) ? q.a : [q.a]).some(v => norm(v) === norm(A[i]))).length;
+    const prev = p.ex[xid]; if (!prev || score >= prev.score) p.ex[xid] = { score, of: x.items.length, at: Date.now() };
+    bumpDay(p); save(lang, p, true);
+  }
+  redraw();
+}
 function autoplay() { const s = L.sess; if (!s) return; const it = s.queue[s.i]; if (it && it.kind === 'w' && s.mode === 'listen') setTimeout(() => say(it.w.h), 250); }
 
 // search box and keyboard shortcuts for flashcards

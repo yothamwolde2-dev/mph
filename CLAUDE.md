@@ -61,7 +61,7 @@ Progress sync: book and course progress is merged between devices (`mergeProg` i
 
 Content is private: the repository is public, so anything unencrypted in it is public. Locked files are unreadable without the key, which only Yotham's login can read.
 
-Languages: Chinese has HSK 2 and HSK 3 open, HSK 4 and HSK 5 locked (open them when Yotham finishes HSK 3 and sends material). German and Afaan Oromo are placeholders, locked until material arrives.
+Languages: Chinese has HSK 2 and HSK 3 open, HSK 4 and HSK 5 locked (open them when Yotham finishes HSK 3 and sends material). German A1 open (A2, B1 locked), Afaan Oromo Level 1 open (Level 2 locked), both written as text files `de_a1_*.txt`, `om_l1_*.txt` and built by `textlevel()`. A language's `ui` in the index sets labels, voice and `noaudio` (Afaan Oromo has no device voice).
 
 ## Design rules (from Yotham, always apply)
 

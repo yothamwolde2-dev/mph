@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0, 18 October 2026
+
+* German A1 is open: 629 words with articles, plurals and verb forms, 34 grammar points covering the whole A1 syllabus, 15 dialogs, 8 reading and listening texts (emails, adverts, announcements), and 32 exercise sets with 203 questions (choose or type the answer, with explanations and audio). A2 and B1 are shown locked.
+* Afaan Oromo Level 1 is open: 195 words, 14 grammar points (including Ethiopian time), 6 dialogs and 8 exercise sets. Devices have no Afaan Oromo voice, so it is a reading course; Level 2 is shown locked.
+* New Exercises tab for languages; your best score per set is saved and synced.
+* The language screens now work for any language: labels, voices and fonts follow the language.
+
 ## 0.4.0, 17 October 2026
 
 * New Plan page replaces Tasks and Week. It cascades from the month to the day: the month's focus (up to five outcomes), the Big 3 for the week (each can support a month goal), a to do list for the week, every day of the week with its tasks, reminders and project items due, and a weekly review (what went well, what got in the way, focus for next week) with the week's score.
