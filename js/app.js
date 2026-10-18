@@ -1,12 +1,12 @@
 // MPH app: routing, rendering, actions, upload and the HTML reader.
-import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.6.1';
-import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG } from './store.js?v=0.6.1';
-import * as V from './views.js?v=0.6.1';
-import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.6.1';
-import { LA, learningHub, langView, stopSpeech } from './lang.js?v=0.6.1';
-import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView, seriesView } from './book.js?v=0.6.1';
-import { warmContent } from './content.js?v=0.6.1';
-import { planView, PA, PC, taskMenu, addTaskMenu } from './plan.js?v=0.6.1';
+import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.7.0';
+import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG } from './store.js?v=0.7.0';
+import * as V from './views.js?v=0.7.0';
+import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.7.0';
+import { LA, learningHub, langView, stopSpeech } from './lang.js?v=0.7.0';
+import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView, seriesView } from './book.js?v=0.7.0';
+import { warmContent } from './content.js?v=0.7.0';
+import { planView, PA, PC, taskMenu, addTaskMenu } from './plan.js?v=0.7.0';
 
 const $app = document.getElementById('app');
 const $layer = document.getElementById('layer');

@@ -218,6 +218,19 @@ $P section.s{scroll-margin-top:124px}
                        ['header.band.top', 'footer.band.bot', '#index', '#back'], extra)
 
 
+def integration():
+    html = open(src('integration.html'), encoding='utf-8').read()
+    js = html[html.index('<script>'):]
+    cut = lambda a, b: web_plain(re.sub(r'[\[\]{}\'"]', ' ', js[js.index(a):js.index(b)]))
+    data = {'i01': cut('var MAPL', 'function el('), 'i12': cut('var CHK', 'function chk('), 'i13': cut('var PATHS', 'function finder('), 'i14': cut('var QZ', 'function quiz(') + ' ' + cut('var GL', 'function gloss(')}
+    extra = """
+$P{background:#000;color:#fff;font-family:var(--f);font-size:16px;line-height:1.62}
+$P section.ch{scroll-margin-top:124px}
+"""
+    return web_convert(html, 'integration', 'The Integration Atlas', 'How cameras, servers and platforms talk to each other, and how to keep every connection safe',
+                       'section.ch', lambda a: {'t': a.get('data-title'), 'part': a.get('data-part')}, ['#iatop'], extra, lambda sid: data.get(sid, ''))
+
+
 if __name__ == '__main__':
     sizes = {}
     h2, h3, bk = hsk2(), hsk3(), book()
@@ -238,7 +251,8 @@ if __name__ == '__main__':
             series_books.append({'id': lv['book'], 'title': sr['title'], 'sub': 'Level %d · %s' % (n, lv['name']), 'file': fid, 'v': lv.get('v', 1), 'size': sizes[fid], 'chapters': len(sbk['ch']), 'kind': 'study',
                                  'series': sr['id'], 'seriesTitle': sr['title'], 'level': n, 'levels': len(sr['levels']), 'levelName': lv['name'], 'tone': sr.get('tone', 'green')})
         series_meta.append(sr)
-    cf, dh = coffee(), dahua()
+    cf, dh, ia = coffee(), dahua(), integration()
+    sizes['book-integration'] = lock('book-integration', ia)
     sizes['book-coffee'] = lock('book-coffee', cf)
     sizes['book-dahua'] = lock('book-dahua', dh)
     index = {
@@ -265,7 +279,8 @@ if __name__ == '__main__':
         'books': [
             {'id': 'cm1', 'title': 'Corporate Management', 'sub': 'Book 1 · How companies work, from structure to strategy', 'file': 'book-cm1', 'v': 1, 'size': sizes['book-cm1'], 'chapters': len(bk['ch']), 'kind': 'study', 'tone': 'green'},
             {'id': 'coffee', 'title': cf['title'], 'sub': cf['sub'], 'file': 'book-coffee', 'v': 1, 'size': sizes['book-coffee'], 'chapters': len(cf['sections']), 'kind': 'web', 'tone': 'coffee'},
-            {'id': 'dahua', 'title': dh['title'], 'sub': dh['sub'], 'file': 'book-dahua', 'v': 1, 'size': sizes['book-dahua'], 'chapters': len(dh['sections']), 'kind': 'web', 'tone': 'light'}] + series_books,
+            {'id': 'dahua', 'title': dh['title'], 'sub': dh['sub'], 'file': 'book-dahua', 'v': 2, 'size': sizes['book-dahua'], 'chapters': len(dh['sections']), 'kind': 'web', 'tone': 'light'},
+            {'id': 'integration', 'title': ia['title'], 'sub': ia['sub'], 'file': 'book-integration', 'v': 1, 'size': sizes['book-integration'], 'chapters': len(ia['sections']), 'kind': 'web', 'tone': 'green'}] + series_books,
         'series': series_meta
     }
     lock('index', index)

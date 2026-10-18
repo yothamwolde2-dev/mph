@@ -543,6 +543,9 @@ select.field{appearance:none;-webkit-appearance:none;padding-right:34px;backgrou
 .bk-back:hover{background:var(--control-h)}
 .bk-back svg{color:var(--accent-ink)}
 .bk-toprow{display:flex;align-items:center;margin:0 0 14px}
+.bk-body figure.fig{margin:26px 0 30px;padding:18px 18px 14px;background:var(--panel);border-radius:12px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.bk-body figure.fig svg{display:block;width:100%;height:auto}
+.bk-body figure.fig figcaption{margin-top:10px;font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--ink-3)}
 .bk-bar .bk-bt small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:600px){.bk-bar{flex-wrap:wrap;row-gap:6px}.bk-bar .bk-back{margin-right:auto}.bk-bar .bk-bt{order:9;flex:1 0 100%;padding:0 2px}}
 .bk-wrap{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-items:start}
@@ -868,6 +871,8 @@ select.field{appearance:none;-webkit-appearance:none;padding-right:34px;backgrou
 .tone-blue .lb-cover{background:linear-gradient(160deg,#000 0%,#06131f 55%,#0d2c48 100%)}
 .tone-grey .lb-cover{background:linear-gradient(160deg,#000 0%,#1a1a1a 60%,#333 100%)}
 .tone-deep .lb-cover{background:linear-gradient(200deg,#1B6E27 0%,#0B3312 40%,#000 85%)}
+.tone-vault .lb-cover{background:radial-gradient(70% 55% at 50% 0%,rgba(255,255,255,.13) 0%,rgba(255,255,255,0) 62%),linear-gradient(180deg,#0b0b0b 0%,#000 55%,#0B3312 100%)}
+.sr-hero.tone-vault{background:radial-gradient(60% 120% at 85% 0%,rgba(255,255,255,.10) 0%,rgba(255,255,255,0) 60%),linear-gradient(104deg,#000 0%,#000 55%,#0B3312 100%)}
 .tone-signal .lb-cover{background:radial-gradient(90% 70% at 0% 100%,rgba(57,180,74,.42) 0%,rgba(57,180,74,0) 58%),radial-gradient(60% 45% at 100% 0%,rgba(255,255,255,.10) 0%,rgba(255,255,255,0) 60%),#000}
 .sr-hero{border-radius:var(--radius);padding:clamp(28px,4.4vw,56px);color:#fff;background:linear-gradient(104deg,#000 0%,#000 44%,#0B3312 74%,#1B6E27 100%);margin-bottom:14px}
 .sr-hero.tone-blue{background:linear-gradient(104deg,#000 0%,#000 44%,#06131f 74%,#0d2c48 100%)}

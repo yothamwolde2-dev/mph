@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.0, 18 October 2026
+
+* New course in five levels: Security. Levels 1 and 2 are open: cyber security, identity, servers and how to prove they are protected, networks, camera and IoT security, smart city security, AI security, AI agents that control computers, data centres including AI data centres, incident response, Ethiopian law, threat modelling, cryptography, hardening, secure video design, IEC 62443, security operations, application and AI security engineering, and risk in numbers. 24 chapters with diagrams drawn for the book.
+* New interactive book: The Integration Atlas. How cameras, recorders, servers and platforms talk to each other: networks, video streams, ONVIF, Dahua's SDK, HTTP API and DSS Pro, GB/T 28181, events, Alibaba Cloud City Brain and DataV, Xiaomi and smart homes, European and American systems, smart city architecture and how to make every connection safe. Six tools: a system map, a bandwidth and storage calculator, a stream address builder, a safety checklist, an integration path finder and a quiz.
+* The Dahua book has a new chapter, Reading Dahua model names, with a live decoder (try DHI-ITC439-PW1H-Z), and real Dahua product photos on the first products, with drawings as a fallback offline.
+* Study books can now carry diagrams.
+
 ## 0.6.1, 18 October 2026
 
 * A clear Back button in every book, manual, document and language lesson, on Mac and iPhone. From a chapter it returns to the contents, from the contents to where you opened the book (Library, a course page or Home).
