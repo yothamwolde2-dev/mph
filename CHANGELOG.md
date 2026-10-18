@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.0, 18 October 2026
+
+* German A1 and Afaan Oromo Level 1 are now real courses, not only flashcards. A new Course tab teaches in order: 16 German lessons and 10 Afaan Oromo lessons, each with goals, explanations, phrases with sound, tables, culture notes, the lesson's words, its grammar, its dialogs and readings, exercises, a writing task saved to your account, a five question check and recommended YouTube videos.
+* Afaan Oromo has sound: a computer voice for every word, example, dialog line and phrase (660 clips), following Qubee spelling. Tap any highlighted word in a lesson to hear it. New grammar: the subject form, adjectives, numbers, joining ideas, this and that, wanting and being able. Three new dialogs and five new exercise sets.
+* New Progress tab for every language level: how much of the level is done and what is left, lessons, words mastered, exercises passed, dialogs, your rhythm over four weeks, your hard words (every word you mark Again or Hard until you master it) with a practice deck, and every question you got wrong, to repeat until it is right. Export as a designed report (HTML, print to PDF) and your hard words as a list for Excel or Numbers.
+* A Back button at the top of every screen, on Mac and iPhone, that returns to the screen you came from.
+* Earlier versions: MPH now keeps a daily copy of your workspace in your database for 30 days (Settings, Data, Earlier versions), and you can bring any of them back.
+* Offline copy of MPH: one file that opens by double click and still signs in to your data (Settings, Data). Built by tools/standalone.py.
+
 ## 0.7.0, 18 October 2026
 
 * New course in five levels: Security. Levels 1 and 2 are open: cyber security, identity, servers and how to prove they are protected, networks, camera and IoT security, smart city security, AI security, AI agents that control computers, data centres including AI data centres, incident response, Ethiopian law, threat modelling, cryptography, hardening, secure video design, IEC 62443, security operations, application and AI security engineering, and risk in numbers. 24 chapters with diagrams drawn for the book.

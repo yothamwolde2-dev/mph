@@ -27,7 +27,7 @@ A personal app for Yotham, used on an M1 Mac and an iPhone. It brings projects, 
 * `js/plan.js` the Plan page (month focus `mgoals[YYYY-MM]`, Big 3 `goals[week]`, tasks, days, review `review[week]`), the Home widgets Today, Calendar and Notes, task menus and drag and drop. Tasks: `{id, x, d (day or empty), wk (week key when planned for the week without a day), star, done, at, src (project item id)}`.
 * `js/reader.js` the HTML reader: injects a small script into each document (storage and position bridge), bookmarks, highlights, contents, search, text size. Talks to the document only by postMessage.
 * `js/content.js` unlocks private content (courses, books) with the key from `mph_keys`, caches it, and stores course and book progress through `mph_doc_state` (keys `lang:<id>`, `book:<id>`).
-* `js/lang.js` Languages: course catalog, flashcards with spaced repetition (read, listen, recall, grammar), dialogs with device speech, listening drills, grammar, words.
+* `js/lang.js` Languages: course catalog, the Course (lessons that teach, in order), flashcards with spaced repetition (read, listen, recall, grammar), dialogs with device speech or recorded clips, listening drills, grammar, words, and Progress (completion, hard words, mistakes to repeat, export). Progress is kept in `lang:<id>` with `cards`, `dlg`, `ex`, `les` (lesson id: done, score, of, note, at) and `miss` (question key: n, ok, at).
 * `js/book.js` the book reader for everything in the Library: contents, bookmarks (ribbons), resume to the paragraph, highlights, search. Two kinds of book: study books built from data (Corporate Management) and web books (see below). Also the Library shelf and the Home "Continue reading" list.
 * `js/webrun.js` runs a web book: the document keeps its own design and interactive tools, inside one element MPH keeps alive. Its script runs in a sandbox (`with` scope): document queries stay inside the book, its storage is saved in the book progress (`ls`, synced), in-book links scroll the book, timers and key presses pause when the book is off screen.
 * `tools/webbook.py` converts a self contained HTML document into a web book: scopes its CSS to `.wb-<id>`, hides its own navigation chrome, keeps its script, extracts section text for search.
@@ -35,15 +35,18 @@ A personal app for Yotham, used on an M1 Mac and an iPhone. It brings projects, 
 * `tools/build_content.py` builds and locks content; `tools/unpack_sources.py` unlocks the sources.
 * `js/app.js` routing, the action handlers (`A` for clicks, `C` for field changes), dialogs, menus and the reader.
 * `js/supabase.js` the Supabase client library (v2.45.4), kept local.
+* `tools/standalone.py` builds `dist/MPH-standalone.html`, the whole app in one file that opens by double click (no server) and still signs in to Supabase. Run it on every release: `python3 tools/standalone.py <path to esbuild>` (`npm i esbuild` anywhere). Settings links to it.
+* Daily copies: `snapshot()` in store.js saves the workspace once a day to `mph_doc_state` as `snap:YYYY-MM-DD` and keeps 30. Settings, Data, Earlier versions restores one (undoable).
+* `RECOVERY.md` how to get everything back if this chat, the website or a device is lost.
 
 ## Rules for changes
 
 * Every change to the workspace goes through `mutate(fn, key)` so it can be undone. Use `touch(fn)` only for things that should not be undoable (for example "last opened").
 * Click actions use `data-act="name"` and live in `A`; field changes use `data-chg="name"` and live in `C`; Enter in a field uses `data-enter="name"`.
 * New home widgets: add to `WIDGETS` in `store.js` and a renderer in `W` in `views.js`.
-* New screens: add a view function, a route in `render()` and an entry in `NAV` (and `TABS` for the iPhone tab bar, five at most).
+* New screens: add a view function, a route in `render()` and an entry in `NAV` (and `TABS` for the iPhone tab bar, five at most). The top bar Back button (`goBack`) returns to the previous screen and falls back to `parentOf()`; extend `parentOf()` for nested routes.
 * Never use a minus sign or dash as an icon for delete; use `trash`.
-* Bump `CONFIG.version`, every `?v=` query (index.html, the imports in js files, sw.js) and the cache name in `sw.js` on every release so devices pick up the new version. Add a line to `CHANGELOG.md`.
+* Bump `CONFIG.version`, every `?v=` query (index.html, the imports in js files, sw.js) and the cache name in `sw.js` on every release so devices pick up the new version. Add a line to `CHANGELOG.md`. Rebuild `dist/MPH-standalone.html`.
 
 ## Private content workflow (how Yotham's documents get into MPH)
 
@@ -62,6 +65,10 @@ Library courses in five levels (series): each subject is one file `sr_<id>.py` i
 Progress sync: book and course progress is merged between devices (`mergeProg` in core.js): lists with ids are joined, removals are kept in `gone`, entries with a time (`at`, `seen`) keep the newest. Give anything new that is saved in progress an `id` and an `at` so it merges correctly.
 
 Content is private: the repository is public, so anything unencrypted in it is public. Locked files are unreadable without the key, which only Yotham's login can read.
+
+Language courses: each level can have `<prefix>_lessons.txt` (format documented in `lessons_of()` in build_content.py: `@ id|title|English|unit|minutes`, then `goal`, `h`, `p`, `say`, `table`/`tr`, `tip`, `culture`, `mistake`, `words`, `grammar`, `dialog`, `passage`, `practice`, `task`, `check`, `watch`). `*word*` marks the language being learned and becomes tappable for sound. Watch links must be YouTube; `q:` makes a search link. German A1 has 16 lessons, Afaan Oromo Level 1 has 10. Bump the level `v` when lessons change.
+
+Afaan Oromo sound: no phone or Mac has an Oromo voice, so the build makes mp3 clips with espeak-ng (voice `om`) and ffmpeg (`apt-get install espeak-ng`), cached in the sources folder as `om_l1_audio.json` (not packed, regenerated when missing) and locked as `om-l1-audio.bin`. The level's `audio` in the index makes lang.js play clips instead of device speech.
 
 Languages: Chinese has HSK 2 and HSK 3 open, HSK 4 and HSK 5 locked (open them when Yotham finishes HSK 3 and sends material). German A1 open (A2, B1 locked), Afaan Oromo Level 1 open (Level 2 locked), both written as text files `de_a1_*.txt`, `om_l1_*.txt` and built by `textlevel()`. A language's `ui` in the index sets labels, voice and `noaudio` (Afaan Oromo has no device voice).
 
@@ -82,6 +89,6 @@ Languages: Chinese has HSK 2 and HSK 3 open, HSK 4 and HSK 5 locked (open them w
 4. Learning (0.2, done): native Languages app (Chinese HSK 2 and 3) and native study book reader (Corporate Management Book 1), private locked content, offline.
 5. Plan (0.4, done): Plan page with month, week and day cascade, Home calendar and notes, lighter Projects with priority badges and add to tasks.
 6. Library (0.3, done): Library shelf with covers, Coffee manual and Dahua proposal as web books, bookmarks and resume synced and merged between Mac and iPhone, automatic updates.
-7. Next for Learning: HSK 4 and 5 when unlocked, German A2, Afaan Oromo Level 2, the Financial Engineering roadmap (Linear Algebra and Python first, exercises for every video) and an interactive AI course.
+7. Languages (0.8, done): Course tabs for German A1 and Afaan Oromo Level 1, Oromo voice, Progress with hard words, mistakes and export. Next for Learning: HSK 4 and 5 when unlocked, German A2, Afaan Oromo Level 2 (future and progressive, object pronouns, plural adjectives), lessons for Chinese HSK 2 and 3, the Financial Engineering roadmap (Linear Algebra and Python first, exercises for every video) and an interactive AI course.
 9. Library series (0.6 and 0.7, done): six subjects in five levels, levels 1 and 2 written; levels 3 to 5 next. Dahua product photos are loaded from Dahua's site (material.dahuasecurity.com) and listed in `PHOTOS` in dahua.html; add the rest when pages can be read.
 8. Later: per item records in the database for live merging between devices, uploading the Power Grotesk font, search across everything.

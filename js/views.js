@@ -1,9 +1,9 @@
 // MPH views. Each returns markup; app.js wires the actions.
-import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.7.0';
-import { store, WIDGETS, CONFIG } from './store.js?v=0.7.0';
-import { homeLearning } from './lang.js?v=0.7.0';
-import { homeBooks } from './book.js?v=0.7.0';
-import { HW, openToday, nodeInPlan } from './plan.js?v=0.7.0';
+import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.8.0';
+import { store, WIDGETS, CONFIG } from './store.js?v=0.8.0';
+import { homeLearning } from './lang.js?v=0.8.0';
+import { homeBooks } from './book.js?v=0.8.0';
+import { HW, openToday, nodeInPlan } from './plan.js?v=0.8.0';
 
 export const NAV = [
   { group: 'Work', items: [
@@ -267,11 +267,13 @@ export function settings() {
     <section class="panel">${ptitle('Data')}
       <div class="setrow"><div class="grow"><b style="font-size:13.5px">Work Portfolio</b><div class="faint" style="font-size:12px">Bring in topics from your portfolio that are not here yet</div></div><button class="btn sm" data-act="importPortfolio">Import</button></div>
       <div class="setrow"><div class="grow"><b style="font-size:13.5px">Backup</b><div class="faint" style="font-size:12px">Download everything as a file</div></div><button class="btn sm" data-act="exportBackup">Export</button></div>
+      ${window.MPH_STANDALONE ? '' : `<div class="setrow"><div class="grow"><b style="font-size:13.5px">Offline copy of MPH</b><div class="faint" style="font-size:12px">One file that opens by double click, even if this website is gone. Keep it with your backup.</div></div><a class="btn sm" href="dist/MPH-standalone.html" download="MPH-standalone.html">Download</a></div>`}
+      <div class="setrow"><div class="grow"><b style="font-size:13.5px">Earlier versions</b><div class="faint" style="font-size:12px">A copy is saved in your database every day, for 30 days</div></div><button class="btn sm" data-act="versions">Choose</button></div>
       <div class="setrow"><div class="grow"><b style="font-size:13.5px">Restore</b><div class="faint" style="font-size:12px">Load a backup file (can be undone)</div></div><label class="btn sm">Restore<input type="file" accept=".json,application/json" data-chg="restore" hidden></label></div>
     </section>
     <section class="panel">${ptitle('Account')}
       <div class="setrow"><div class="grow"><b style="font-size:13.5px">${esc(store.user ? store.user.email : '')}</b><div class="faint" style="font-size:12px">Your data is private to this login</div></div><button class="btn sm" data-act="signOut">Sign out</button></div>
-      <div class="setrow"><div class="grow faint" style="font-size:12px">MPH version ${CONFIG.version} · Foundation</div></div>
+      <div class="setrow"><div class="grow faint" style="font-size:12px">MPH version ${CONFIG.version}${window.MPH_STANDALONE ? ' · Recovery copy' : ''}</div></div>
     </section>
   </div>`;
 }
@@ -306,7 +308,7 @@ export function shell(route, inner) {
       <div class="side-foot"><a class="navlink ${r === 'settings' ? 'on' : ''}" href="#/settings" style="padding-left:0">${icon('settings')}Settings</a><span class="sync ${syncCls}"><i></i>${syncTxt}</span></div>
     </aside>
     <div class="main">
-      <div class="topbar"><a class="mbrand" href="#/home" aria-label="MPH Home"><b>MPH</b><i></i></a><span class="crumb">${esc(LABEL[r] || '')}</span><span class="sp"></span>
+      <div class="topbar">${r0 && r0 !== 'home' ? `<button class="topback" data-act="goBack" aria-label="Go back" title="Back to the previous screen">${icon('left', 16)}<span>Back</span></button>` : ''}<a class="mbrand" href="#/home" aria-label="MPH Home"><b>MPH</b><i></i></a><span class="crumb">${esc(LABEL[r] || '')}</span><span class="sp"></span>
         <button class="iconbtn" data-act="undo" ${store.past.length ? '' : 'disabled'} aria-label="Undo" title="Undo (Cmd Z)">${icon('undo', 17)}</button>
         <button class="iconbtn" data-act="redo" ${store.future.length ? '' : 'disabled'} aria-label="Redo" title="Redo (Cmd Shift Z)">${icon('redo', 17)}</button>
         <a class="iconbtn mobile-only" href="#/settings" aria-label="Settings">${icon('settings', 17)}</a>

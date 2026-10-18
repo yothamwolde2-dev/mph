@@ -1,11 +1,11 @@
 // MPH store: login, workspace state, undo and redo, saving and syncing with Supabase.
-import { uid, clone, DEFAULT_STATUSES, mkNode, mergeProg } from './core.js?v=0.7.0';
+import { uid, clone, DEFAULT_STATUSES, mkNode, mergeProg } from './core.js?v=0.8.0';
 
 export const CONFIG = {
   url: 'https://ibudcfsqsxjgxmngwrhk.supabase.co',
   key: 'sb_publishable_26qRWYPGawMiYPUPBsI1NA_HS2MuWOv',
   bucket: 'mph-files',
-  version: '0.7.0'
+  version: '0.8.0'
 };
 
 export const sb = window.supabase.createClient(CONFIG.url, CONFIG.key, {
@@ -152,10 +152,42 @@ export async function push() {
       if (JSON.stringify(store.state) !== before) window.dispatchEvent(new CustomEvent('mph:toast', { detail: { text: 'Updated with changes from your other device' } }));
     } else {
       store.rev = data[0].rev; store.dirty = false; setSync('idle'); saveLocal();
+      snapshot();
     }
   } catch (e) {
     setSync(navigator.onLine ? 'error' : 'offline');
   } finally { pushing = false; if (store.dirty && store.sync === 'idle') schedulePush(); }
+}
+
+// Daily copies of the workspace, kept in the database next to reading progress (doc_id snap:YYYY-MM-DD).
+// One per day, the latest 30 days are kept, so a bad change can be rolled back from any device.
+const SNAP_KEEP = 30;
+const dayKey = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+let snapBusy = false;
+export async function snapshot(force = false) {
+  if (!store.user || snapBusy) return false;
+  const k = LKEY() + ':snap', day = dayKey();
+  try { if (!force && localStorage.getItem(k) === day) return false; } catch (e) {}
+  snapBusy = true;
+  try {
+    const { error } = await sb.from('mph_doc_state').upsert({ user_id: store.user.id, doc_id: 'snap:' + day, data: { at: new Date().toISOString(), rev: store.rev, version: CONFIG.version, state: store.state }, updated_at: new Date().toISOString() });
+    if (error) throw error;
+    try { localStorage.setItem(k, day); } catch (e) {}
+    const list = await listSnapshots();
+    const old = list.slice(SNAP_KEEP).map(s => s.doc_id);
+    if (old.length) await sb.from('mph_doc_state').delete().eq('user_id', store.user.id).in('doc_id', old);
+    return true;
+  } catch (e) { return false; } finally { snapBusy = false; }
+}
+export async function listSnapshots() {
+  if (!store.user) return [];
+  const { data, error } = await sb.from('mph_doc_state').select('doc_id,updated_at').eq('user_id', store.user.id).like('doc_id', 'snap:%').order('doc_id', { ascending: false });
+  return error ? [] : (data || []);
+}
+export async function readSnapshot(docId) {
+  const { data, error } = await sb.from('mph_doc_state').select('data').eq('user_id', store.user.id).eq('doc_id', docId).maybeSingle();
+  if (error || !data) return null;
+  return data.data;
 }
 
 export async function pull(force = false) {
@@ -199,7 +231,7 @@ export async function startSession(user) {
     const n = await importPortfolio();
     if (n) window.dispatchEvent(new CustomEvent('mph:toast', { detail: { text: `Brought in ${n} topics from your Work Portfolio` } }));
   }
-  setTimeout(() => { flushDocStates(); prefetchDocs(); }, 2500);
+  setTimeout(() => { flushDocStates(); prefetchDocs(); snapshot(); }, 2500);
   if (listening) return;
   listening = true;
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && store.user) pull(); });

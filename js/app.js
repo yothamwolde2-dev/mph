@@ -1,12 +1,12 @@
 // MPH app: routing, rendering, actions, upload and the HTML reader.
-import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.7.0';
-import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG } from './store.js?v=0.7.0';
-import * as V from './views.js?v=0.7.0';
-import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.7.0';
-import { LA, learningHub, langView, stopSpeech } from './lang.js?v=0.7.0';
-import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView, seriesView } from './book.js?v=0.7.0';
-import { warmContent } from './content.js?v=0.7.0';
-import { planView, PA, PC, taskMenu, addTaskMenu } from './plan.js?v=0.7.0';
+import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.8.0';
+import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG, snapshot, listSnapshots, readSnapshot } from './store.js?v=0.8.0';
+import * as V from './views.js?v=0.8.0';
+import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.8.0';
+import { LA, LC, learningHub, langView, stopSpeech } from './lang.js?v=0.8.0';
+import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView, seriesView } from './book.js?v=0.8.0';
+import { warmContent } from './content.js?v=0.8.0';
+import { planView, PA, PC, taskMenu, addTaskMenu } from './plan.js?v=0.8.0';
 
 const $app = document.getElementById('app');
 const $layer = document.getElementById('layer');
@@ -64,10 +64,20 @@ onChange(queueRender);
 window.addEventListener('mph:sync', () => { const el = document.querySelector('.sync'); if (!el) return; const l = V.syncLabel(); el.className = 'sync ' + l.cls; el.innerHTML = '<i></i>' + l.txt; });
 // Back from a book returns to where the book was opened (Library, a course page, Home).
 const bookOf = h => { const m = /#\/book\/([^/]+)/.exec(h || ''); return m ? m[1] : null; };
+// Back: the screen you came from (not undo). Within MPH it is the browser history; opened fresh, it climbs to the parent screen.
+const NAVSTACK = [location.hash || '#/home'];
+function parentOf(h) {
+  const parts = h.replace(/^#\/?/, '').split('/').filter(Boolean);
+  if (parts.length <= 1) return '#/home';
+  if (parts[0] === 'lang') return parts.length > 3 ? '#/' + parts.slice(0, parts.length - 1).join('/') : '#/learning';
+  if (parts[0] === 'book' || parts[0] === 'series' || parts[0] === 'read') return '#/library';
+  return '#/' + parts.slice(0, -1).join('/');
+}
 window.addEventListener('hashchange', e => {
   const to = bookOf(location.hash), from = e.oldURL ? '#' + (e.oldURL.split('#')[1] || '') : '';
   if (to && bookOf(from) !== to) { window.MPH_FROM = window.MPH_FROM || {}; window.MPH_FROM[to] = from && from !== '#' ? from : ''; }
   window.MPH_LAST = from;
+  const h = location.hash || '#/home'; if (NAVSTACK[NAVSTACK.length - 2] === h) NAVSTACK.pop(); else if (NAVSTACK[NAVSTACK.length - 1] !== h) NAVSTACK.push(h);
   ui.menu = null; ui.drawer = null; window.scrollTo(0, 0); render();
 });
 window.addEventListener('mph:redraw', () => queueRender());
@@ -75,7 +85,7 @@ window.addEventListener('mph:redraw', () => queueRender());
 // INSTALL: show how to turn MPH into an app until it runs as one
 const standalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
 function installBanner() {
-  if (standalone() || load('mph:installHidden', false)) return '';
+  if (window.MPH_STANDALONE || standalone() || load('mph:installHidden', false)) return '';
   const ua = navigator.userAgent; const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const safari = /Safari/.test(ua) && !/Chrome|CriOS|Edg/.test(ua);
   const android = /Android/.test(ua);
@@ -171,6 +181,7 @@ const A = {
     renderLayer();
   },
   closeMenu() { ui.menu = null; renderLayer(); },
+  goBack() { if (NAVSTACK.length > 1) history.back(); else location.hash = parentOf(location.hash || '#/home'); },
   async importPortfolio() { const n = await importPortfolio(); toast(n ? `Brought in ${n} topics from your Work Portfolio` : 'Everything from your Work Portfolio is already here'); },
   exportBackup() {
     // Everything: the workspace plus reading and course progress kept on this device.
@@ -178,6 +189,15 @@ const A = {
     Object.keys(localStorage).filter(k => k.startsWith(pre)).forEach(k => { try { progress[k.slice(pre.length)] = JSON.parse(localStorage.getItem(k)).data; } catch (e) {} });
     const b = new Blob([JSON.stringify({ app: 'MPH', version: CONFIG.version, at: new Date().toISOString(), state: S(), progress }, null, 2)], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `mph-backup-${today()}.json`; document.body.appendChild(a); a.click(); a.remove();
+  },
+  async versions() { ui.modal = { type: 'versions', list: null }; renderLayer(); const list = await listSnapshots(); if (ui.modal && ui.modal.type === 'versions') { ui.modal.list = list; renderLayer(); } },
+  async saveVersionNow() { const m = ui.modal; if (!m || m.busy) return; m.busy = true; renderLayer(); const ok = await snapshot(true); m.busy = false; m.list = await listSnapshots(); m.msg = ok ? 'Today\'s copy is saved' : 'Could not save right now. Check your connection.'; renderLayer(); },
+  async versionGo(el) {
+    const m = ui.modal; if (!m || m.busy) return; m.busy = true; m.msg = 'Bringing it back'; renderLayer();
+    const d = await readSnapshot(el.dataset.id);
+    if (!d || !d.state || !d.state.areas) { m.busy = false; m.msg = 'That version could not be read'; renderLayer(); return; }
+    ui.modal = null; mutate(s => { Object.keys(s).forEach(k => delete s[k]); Object.assign(s, clone(d.state)); });
+    toast('Earlier version restored. Undo is available', true);
   },
   theme(el) { mutate(s => { s.theme = el.dataset.v; }); },
   async signOut() { await sb.auth.signOut(); },
@@ -240,7 +260,7 @@ const C = {
   }
 };
 
-Object.assign(A, RA, LA, BA, PA); Object.assign(C, RC, BC, PC);
+Object.assign(A, RA, LA, BA, PA); Object.assign(C, RC, BC, PC, LC);
 window.addEventListener('mph:menu', e => { const { type, id, e: ev } = e.detail; openMenu(type, id, ev); });
 window.addEventListener('mph:closemenu', () => { ui.menu = null; renderLayer(); });
 window.addEventListener('mph:focus', e => { ui.wantFocus = e.detail; });
@@ -278,6 +298,13 @@ function modal() {
   }
   if (m.type === 'rename') return wrap('Rename', `<div class="stack"><input class="field" data-m="value" data-enter="renameGo" value="${esc(m.value)}"></div>`, `<button class="btn ghost" data-act="modalClose">Cancel</button><button class="btn primary" data-act="renameGo">Save</button>`);
   if (m.type === 'move') return wrap('Move document', `<div class="stack">${placeFields(m.section, m.col)}</div>`, `<button class="btn ghost" data-act="modalClose">Cancel</button><button class="btn primary" data-act="moveGo">Move</button>`);
+  if (m.type === 'versions') {
+    const nice = id => { const d = new Date(id.slice(5) + 'T12:00:00'); return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); };
+    const body = m.list == null ? '<p class="muted">Looking for saved versions</p>'
+      : !m.list.length ? '<p class="muted">No saved versions yet. MPH keeps one copy a day once you are signed in and online.</p>'
+      : `<p class="muted">MPH keeps a copy of your workspace each day, for the last 30 days. Bringing one back can be undone.</p><div class="verlist">${m.list.map(v => `<button class="verrow" data-act="versionGo" data-id="${esc(v.doc_id)}" ${m.busy ? 'disabled' : ''}><b>${esc(nice(v.doc_id))}</b><small>${esc(new Date(v.updated_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }))}</small></button>`).join('')}</div>`;
+    return wrap('Earlier versions', `<div class="stack">${body}${m.msg ? `<p class="muted" style="font-size:13px">${esc(m.msg)}</p>` : ''}</div>`, `<button class="btn ghost" data-act="saveVersionNow" ${m.busy ? 'disabled' : ''}>Save a copy now</button><button class="btn primary" data-act="modalClose">Close</button>`);
+  }
   if (m.type === 'newCol') return wrap(m.section === 'learning' ? 'New course' : 'New collection', `<div class="stack"><input class="field" data-m="name" data-enter="newColGo" placeholder="${m.section === 'learning' ? 'For example German, Afaan Oromo, Prompting' : 'For example Tools, Brand references'}"></div>`, `<button class="btn ghost" data-act="modalClose">Cancel</button><button class="btn primary" data-act="newColGo">Create</button>`);
   return '';
 }

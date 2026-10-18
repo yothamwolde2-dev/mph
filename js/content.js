@@ -1,7 +1,7 @@
 // MPH private content: courses and books that Yotham sends to Claude.
 // Files in /content are locked (AES-256-GCM). The key is read once from Yotham's private
 // Supabase table after sign in, then kept on the device so everything opens offline.
-import { sb, store, readDocState, saveDocState, CONFIG } from './store.js?v=0.7.0';
+import { sb, store, readDocState, saveDocState, CONFIG } from './store.js?v=0.8.0';
 
 const mem = new Map();
 let keyPromise = null;
@@ -60,7 +60,7 @@ export async function warmContent() {
   try {
     const idx = await unlock('index', CONFIG.version); ready.set('index@' + CONFIG.version, idx);
     const files = [];
-    idx.languages.forEach(l => (l.levels || []).forEach(v => { if (v.file) files.push([v.file, v.v]); }));
+    idx.languages.forEach(l => (l.levels || []).forEach(v => { if (v.file) files.push([v.file, v.v]); if (v.audio) files.push([v.audio, v.audioV || 1]); }));
     idx.books.forEach(b => files.push([b.file, b.v]));
     for (const [f, v] of files) { try { ready.set(f + '@' + v, await unlock(f, v)); } catch (e) {} }
   } catch (e) {}

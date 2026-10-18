@@ -165,11 +165,131 @@ def textlevel(prefix, lid, name, tag):
         elif line.startswith('='):
             f = line[1:].split('|')
             cur['items'].append({'q': f[0], 'qe': f[1], 'a': f[2].split(';'), 'e': f[3] if len(f) > 3 else '', 'h': f[4] if len(f) > 4 else ''})
-    return {'id': lid, 'name': name, 'words': words, 'grammar': grammar, 'dialogs': dialogs, 'passages': passages, 'sentences': [], 'exercises': exercises}
+    lessons = lessons_of(rd('lessons'), tag, words, grammar, dialogs, passages, exercises)
+    return {'id': lid, 'name': name, 'words': words, 'grammar': grammar, 'dialogs': dialogs, 'passages': passages, 'sentences': [], 'exercises': exercises, 'lessons': lessons}
+
+
+def lessons_of(text, tag, words, grammar, dialogs, passages, exercises):
+    """The Course: <prefix>_lessons.txt, one block per lesson.
+    @ id|title|English title|unit|minutes, then lines key|fields:
+    goal, h, p, say (target|English), table (header cells ;), tr (row cells ;), tip, culture, mistake,
+    words (topic:Name;=word;word), grammar, dialog, passage, practice (indices), task,
+    check (question|hint|opt;opt|answer|why), watch (channel|title|url or q:search|why).
+    *text* marks words in the language being learned."""
+    out, cur = [], None
+    byh = {w['h']: w['id'] for w in words}
+    def idx(lst, v, what):
+        r = []
+        for x in v.split(','):
+            x = x.strip()
+            if not x: continue
+            i = int(x)
+            assert 0 <= i < len(lst), '%s %s: no %s %d' % (tag, cur['id'], what, i)
+            r.append(lst[i]['id'])
+        return r
+    for raw in text.split('\n'):
+        line = raw.rstrip()
+        if not line: continue
+        if line.startswith('@ '):
+            f = line[2:].split('|')
+            cur = {'id': tag + 'l:' + f[0], 't': f[1], 'te': f[2], 'unit': f[3] if len(f) > 3 else '', 'min': int(f[4]) if len(f) > 4 and f[4] else 30,
+                   'goals': [], 'blocks': [], 'words': [], 'grammar': [], 'dialogs': [], 'passages': [], 'practice': [], 'task': '', 'check': [], 'watch': []}
+            out.append(cur); continue
+        k, _, v = line.partition('|')
+        b = cur['blocks']
+        if k == 'goal': cur['goals'].append(v)
+        elif k in ('h', 'p', 'tip', 'culture', 'mistake'): b.append({'k': k, 'x': v})
+        elif k == 'say':
+            h, e = (v.split('|') + [''])[:2]
+            if b and b[-1]['k'] == 'say': b[-1]['items'].append({'h': h, 'e': e})
+            else: b.append({'k': 'say', 'items': [{'h': h, 'e': e}]})
+        elif k == 'table': b.append({'k': 'table', 'head': v.split(';'), 'rows': []})
+        elif k == 'tr': b[-1]['rows'].append(v.split(';'))
+        elif k == 'words':
+            for part in v.split(';'):
+                part = part.strip()
+                if part.startswith('topic:'):
+                    t = part[6:]; got = [w['id'] for w in words if w['topic'] == t]
+                    assert got, '%s: no words in topic %s' % (cur['id'], t)
+                    cur['words'] += got
+                elif part:
+                    part = part.lstrip('=')
+                    if part in byh: cur['words'].append(byh[part])
+                    else: print('  note: %s word not in the list: %s' % (cur['id'], part))
+        elif k == 'grammar': cur['grammar'] = idx(grammar, v, 'grammar')
+        elif k == 'dialog': cur['dialogs'] = idx(dialogs, v, 'dialog')
+        elif k == 'passage': cur['passages'] = idx(passages, v, 'passage')
+        elif k == 'practice': cur['practice'] = idx(exercises, v, 'exercise')
+        elif k == 'task': cur['task'] = v
+        elif k == 'check':
+            f = v.split('|')
+            o = f[2].split(';'); a = int(f[3]); assert 0 <= a < len(o), cur['id'] + ' check answer out of range: ' + f[0]
+            cur['check'].append({'q': f[0], 'qe': f[1], 'o': o, 'a': a, 'e': f[4] if len(f) > 4 else ''})
+        elif k == 'watch':
+            c, t, u, n = (v.split('|') + ['', '', ''])[:4]
+            if u.startswith('q:'):
+                import urllib.parse
+                u = 'https://www.youtube.com/results?search_query=' + urllib.parse.quote_plus(u[2:]); kind = 'search'
+            else: kind = 'video' if 'watch?v=' in u else 'channel'
+            assert u.startswith('https://www.youtube.com/'), cur['id'] + ' watch link must be YouTube: ' + u
+            cur['watch'].append({'c': c, 't': t, 'u': u, 'n': n, 'kind': kind})
+        else: raise ValueError('%s: unknown lesson line %s' % (cur['id'], line[:40]))
+    for l in out:
+        l['words'] = list(dict.fromkeys(l['words']))
+        txt = ' '.join([l['t'], l['te']] + l['goals'] + [x.get('x', '') for x in l['blocks']] + [i['h'] + ' ' + i['e'] for x in l['blocks'] if x['k'] == 'say' for i in x['items']])
+        assert ' - ' not in txt and '\u2014' not in txt and '\u2013' not in txt, l['id'] + ' uses a dash as punctuation'
+    return out
 
 
 def book():
     return json.load(open(src('book_raw.json')))
+
+
+def speech_texts(level):
+    """Every line the Languages screens can read aloud for one level."""
+    out = []
+    for w in level['words']: out += [w['h'], w['ex']['h']]
+    for d in level['dialogs'] + level['passages']: out += [l['h'] for l in d['lines']] + [q['qh'] for q in d['q']]
+    for g in level['grammar']: out += [e['h'] for e in g['ex']]
+    for x in level['exercises']: out += [i.get('h', '') for i in x['items']]
+    for l in level.get('lessons', []):
+        for b in l['blocks']:
+            if b['k'] == 'say': out += [i['h'] for i in b['items']]
+            cells = [b.get('x', '')] + [c for r in b.get('rows', []) for c in r]
+            for c in cells: out += re.findall(r'\*([^*]+)\*', c)
+    seen = []
+    for t in out:
+        t = t.replace('*', '').strip()
+        if t and t not in seen: seen.append(t)
+    return seen
+
+
+def tts(level, voice, cache_name):
+    """Recorded voice for a language that phones and Macs cannot speak (Afaan Oromo).
+    Made with the free espeak-ng synthesizer (apt-get install espeak-ng) and ffmpeg, as small mp3 clips.
+    It is a computer voice: clear and regular, the way Qubee is written, but not a native speaker.
+    Clips are cached in the sources folder (<cache_name>.json, not packed) so only new lines are made."""
+    import shutil, subprocess, tempfile
+    path = src(cache_name + '.json')
+    cache = json.load(open(path)) if os.path.exists(path) else {}
+    if not shutil.which('espeak-ng') or not shutil.which('ffmpeg'):
+        print('  espeak-ng or ffmpeg missing: using %d cached clips' % len(cache))
+        return cache or None
+    texts = speech_texts(level); made = 0
+    tmp = tempfile.mkdtemp()
+    for t in texts:
+        if t in cache: continue
+        # tune the spelling for the synthesizer: the glottal stop as a tiny break, dh closer to the Oromo implosive d
+        say = re.sub(r"(?<=\w)'(?=\w)", ' ', t).replace('dh', 'd').replace('Dh', 'D')
+        wav, mp3 = os.path.join(tmp, 'a.wav'), os.path.join(tmp, 'a.mp3')
+        subprocess.run(['espeak-ng', '-v', voice, '-s', '138', '-g', '3', '-w', wav, say], check=True)
+        subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', wav, '-ac', '1', '-ar', '22050', '-b:a', '32k', mp3], check=True)
+        cache[t] = base64.b64encode(open(mp3, 'rb').read()).decode(); made += 1
+    shutil.rmtree(tmp)
+    cache = {t: cache[t] for t in texts if t in cache}
+    json.dump(cache, open(path, 'w'))
+    print('  voice %s: %d clips, %d new' % (cache_name, len(cache), made))
+    return cache
 
 
 # Courses in five levels (Library). Each sr_<id>.py in the sources folder defines SERIES and L1, L2, ...
@@ -241,6 +361,8 @@ if __name__ == '__main__':
     om1 = textlevel('om_l1', 'l1', 'Level 1', 'om1')
     sizes['de-a1'] = lock('de-a1', de1)
     sizes['om-l1'] = lock('om-l1', om1)
+    om_voice = tts(om1, 'om', 'om_l1_audio')
+    if om_voice: sizes['om-l1-audio'] = lock('om-l1-audio', {'clips': om_voice})
     series_meta, series_books = [], []
     for sr, books in all_series():
         for n, sbk in books.items():
@@ -266,15 +388,15 @@ if __name__ == '__main__':
             {'id': 'de', 'name': 'German', 'native': 'Deutsch', 'voice': 'de-DE',
              'ui': {'script': 'Deutsch', 'roman': None, 'recall': 'Say or write it in German', 'hear': 'Choose the word you hear', 'search': 'Search German or English', 'latin': True, 'reading': True},
              'levels': [
-                {'id': 'a1', 'name': 'A1', 'file': 'de-a1', 'v': 1, 'size': sizes['de-a1'], 'counts': {'words': len(de1['words']), 'dialogs': len(de1['dialogs']), 'grammar': len(de1['grammar'])}},
+                {'id': 'a1', 'name': 'A1', 'file': 'de-a1', 'v': 2, 'size': sizes['de-a1'], 'counts': {'words': len(de1['words']), 'dialogs': len(de1['dialogs']), 'grammar': len(de1['grammar']), 'lessons': len(de1['lessons'])}},
                 {'id': 'a2', 'name': 'A2', 'locked': True},
                 {'id': 'b1', 'name': 'B1', 'locked': True}]},
             {'id': 'om', 'name': 'Afaan Oromo', 'native': 'Afaan Oromoo', 'voice': 'om-ET',
-             'ui': {'script': 'Oromoo', 'roman': None, 'recall': 'Say or write it in Afaan Oromo', 'hear': 'Choose the word you hear', 'search': 'Search Afaan Oromo or English', 'latin': True, 'reading': True, 'noaudio': True,
+             'ui': {'script': 'Oromoo', 'roman': None, 'recall': 'Say or write it in Afaan Oromo', 'hear': 'Choose the word you hear', 'search': 'Search Afaan Oromo or English', 'latin': True, 'reading': True, 'noaudio': 'om-l1-audio' not in sizes,
                     'novoice': 'Phones and Macs have no Afaan Oromo voice yet, so read the lines aloud yourself.'},
-             'note': 'Level 1 is written in standard Qubee spelling. Practise speaking with a native speaker, who can also confirm pronunciation.',
+             'note': 'Level 1 is written in standard Qubee spelling. The voice is a computer voice that follows Qubee exactly, so it is regular but not native: confirm the sound of ejectives (q, x, c, ph) and the glottal stop with a native speaker.',
              'levels': [
-                {'id': 'l1', 'name': 'Level 1', 'file': 'om-l1', 'v': 1, 'size': sizes['om-l1'], 'counts': {'words': len(om1['words']), 'dialogs': len(om1['dialogs']), 'grammar': len(om1['grammar'])}},
+                {'id': 'l1', 'name': 'Level 1', 'file': 'om-l1', 'v': 2, 'size': sizes['om-l1'], **({'audio': 'om-l1-audio', 'audioV': 1} if 'om-l1-audio' in sizes else {}), 'counts': {'words': len(om1['words']), 'dialogs': len(om1['dialogs']), 'grammar': len(om1['grammar']), 'lessons': len(om1['lessons'])}},
                 {'id': 'l2', 'name': 'Level 2', 'locked': True}]}],
         'books': [
             {'id': 'cm1', 'title': 'Corporate Management', 'sub': 'Book 1 · How companies work, from structure to strategy', 'file': 'book-cm1', 'v': 1, 'size': sizes['book-cm1'], 'chapters': len(bk['ch']), 'kind': 'study', 'tone': 'green'},
