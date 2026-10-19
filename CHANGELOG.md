@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.2, 19 October 2026
+
+* Dahua book: the first real 3D models, made from Dahua's own product photos, so shape and texture match the product: the ITC439 outdoor parking detector and the ITC952 enforcement camera. Open either and it turns a full 360. More products follow as they are generated and checked.
+
 ## 0.9.1, 19 October 2026
 
 * Dahua book: the drawn 3D models are gone. Products show Dahua's own photos again until real 3D models made from those photos are added. The viewer now loads textured model files (GLB) per product from content/models, turns them a full 360 and falls back to the photos.

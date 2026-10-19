@@ -3,8 +3,8 @@
 // 1. Push: the reminders server (Supabase function mph-remind, every minute) sends to every device that
 //    turned notifications on, even when MPH is closed. On iPhone this needs MPH opened from the Home Screen icon.
 // 2. In app: while MPH is open, a short timer rings anything due, with a sound and a banner.
-import { store, sb, CONFIG } from './store.js?v=0.9.1';
-import { due } from './remind.js?v=0.9.1';
+import { store, sb, CONFIG } from './store.js?v=0.9.2';
+import { due } from './remind.js?v=0.9.2';
 
 export const VAPID_PUBLIC = 'BIm4Dt6X2lFm3I1Od1NM0JjMEqaxuwoQdimJPZ6AmiMVQjJ8_NTGmGQnSxUl7kWNOaT0rE4FeidduCEdPAVP5rg';
 export const TZ = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Africa/Addis_Ababa'; } catch (e) { return 'Africa/Addis_Ababa'; } })();
