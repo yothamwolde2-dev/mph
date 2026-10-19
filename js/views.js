@@ -1,9 +1,10 @@
 // MPH views. Each returns markup; app.js wires the actions.
-import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.8.2';
-import { store, WIDGETS, CONFIG } from './store.js?v=0.8.2';
-import { homeLearning } from './lang.js?v=0.8.2';
-import { homeBooks } from './book.js?v=0.8.2';
-import { HW, openToday, nodeInPlan } from './plan.js?v=0.8.2';
+import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.8.3';
+import { store, WIDGETS, CONFIG } from './store.js?v=0.8.3';
+import { homeLearning } from './lang.js?v=0.8.3';
+import { homeBooks } from './book.js?v=0.8.3';
+import { N } from './notify.js?v=0.8.3';
+import { HW, openToday, nodeInPlan } from './plan.js?v=0.8.3';
 
 export const NAV = [
   { group: 'Work', items: [
@@ -260,6 +261,12 @@ export function settings() {
     </section>
     <section class="panel">${ptitle('Appearance')}
       <div class="setrow"><div class="grow"><b style="font-size:13.5px">Theme</b><div class="faint" style="font-size:12px">Black field or light grey field</div></div><div class="seg"><button class="${st.theme === 'dark' ? 'on' : ''}" data-act="theme" data-v="dark">Black</button><button class="${st.theme === 'light' ? 'on' : ''}" data-act="theme" data-v="light">Light</button></div></div>
+    </section>
+    <section class="panel">${ptitle('Notifications')}
+      <div class="setrow"><div class="grow"><b style="font-size:13.5px">This device ${N.state === 'on' ? '<span class="rm-chip on" style="margin-left:6px">On</span>' : ''}</b><div class="faint" style="font-size:12px">${esc(N.note || 'Checking')}</div></div>${N.state === 'on' ? '<button class="btn sm" data-act="pushOff">Turn off</button>' : N.state === 'off' ? '<button class="btn sm primary" data-act="pushOn">Turn on</button>' : ''}</div>
+      <div class="setrow"><div class="grow"><b style="font-size:13.5px">Send a test</b><div class="faint" style="font-size:12px">A test notification to every device that has them on</div></div><button class="btn sm" data-act="pushTest">Test</button></div>
+      <div class="setrow"><div class="grow"><b style="font-size:13.5px">Morning time</b><div class="faint" style="font-size:12px">Project reminders and the daily briefing ring at this time</div></div><input class="field sm" type="time" style="width:136px" data-chg="notifyMorning" value="${esc((st.notify || {}).morning || '08:30')}" aria-label="Morning time"></div>
+      <div class="setrow"><div class="grow"><b style="font-size:13.5px">Daily briefing</b><div class="faint" style="font-size:12px">Every morning: how many tasks today and your top priorities</div></div><button class="switch ${(st.notify || {}).brief !== false ? 'on' : ''}" data-act="notifyBrief" aria-label="Daily briefing"></button></div>
     </section>
     <section class="panel">${ptitle('Home layout')}${st.home.order.map(id => WIDGETS.find(w => w.id === id)).filter(Boolean).map(wrow).join('')}</section>
     <section class="panel">${ptitle('Statuses')}${st.statuses.map(s => `<div class="setrow"><i class="dot" style="background:${s.color};width:12px;height:12px"></i><div class="grow"><input class="inline" data-chg="statusLabel" data-k2="${esc(s.key)}" value="${esc(s.label)}" aria-label="Status name"></div></div>`).join('')}</section>

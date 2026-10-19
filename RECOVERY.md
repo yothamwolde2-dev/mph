@@ -10,6 +10,7 @@ How to get everything back if this chat, the website, a device or the database i
 | The website | GitHub Pages, https://yothamwolde2-dev.github.io/mph/ | GitHub Pages is switched off |
 | Your data: projects, tasks, plan, notes, reading and course progress | Supabase project `ibudcfsqsxjgxmngwrhk`, tables `mph_state` and `mph_doc_state` | the Supabase project is deleted |
 | Daily copies of your workspace, 30 days | Supabase, `mph_doc_state` rows `snap:YYYY-MM-DD` | the Supabase project is deleted |
+| Reminders server and device list for notifications | Supabase Edge Function `mph-remind`, cron job `mph-remind`, tables `mph_push` and `mph_push_sent` | the Supabase project is deleted (redeploy from `supabase/functions/mph-remind`) |
 | Uploaded HTML documents | Supabase Storage, private bucket `mph-files` | the Supabase project is deleted |
 | The content key that unlocks every book and course | Supabase, table `mph_keys` | the Supabase project is deleted and you kept no copy |
 | Offline copy of the app | `MPH-standalone.html`, wherever you saved it | you delete it |

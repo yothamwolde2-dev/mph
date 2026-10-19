@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.3, 19 October 2026
+
+* Reminders on the Plan page: add one with a day, a time and a repeat (once, every day, every weekday, every week, every month), or from any task's menu with Remind me. They show in the Reminders panel, on their day in the week board and in Today on Home.
+* Notifications: turn them on per device in Settings, Notifications. Reminders then arrive on the iPhone and the Mac even when MPH is closed (on iPhone, open MPH from its Home Screen icon first; iOS 16.4 or later). While MPH is open, a reminder also rings in the app with a soft chime, Done and Snooze 10 minutes.
+* Project reminders now ring too, at your morning time, and a daily briefing each morning tells you how many tasks you have and your top priorities. Both are set in Settings.
+
 ## 0.8.2, 18 October 2026
 
 * Dahua book: more product photos in the 360 viewer: ASI7213X face recognition terminal (6 angles), D-Volt Mini EV charger (6), IPC-HFW3849T1 WizSense bullet (3) and the IPMECD-2032 barrier.

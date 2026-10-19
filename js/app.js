@@ -1,12 +1,13 @@
 // MPH app: routing, rendering, actions, upload and the HTML reader.
-import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.8.2';
-import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG, snapshot, listSnapshots, readSnapshot } from './store.js?v=0.8.2';
-import * as V from './views.js?v=0.8.2';
-import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.8.2';
-import { LA, LC, learningHub, langView, stopSpeech } from './lang.js?v=0.8.2';
-import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView, seriesView } from './book.js?v=0.8.2';
-import { warmContent } from './content.js?v=0.8.2';
-import { planView, PA, PC, taskMenu, addTaskMenu } from './plan.js?v=0.8.2';
+import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.8.3';
+import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG, snapshot, listSnapshots, readSnapshot } from './store.js?v=0.8.3';
+import * as V from './views.js?v=0.8.3';
+import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.8.3';
+import { LA, LC, learningHub, langView, stopSpeech } from './lang.js?v=0.8.3';
+import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView, seriesView } from './book.js?v=0.8.3';
+import { warmContent } from './content.js?v=0.8.3';
+import { planView, PA, PC, taskMenu, addTaskMenu, reminderModal } from './plan.js?v=0.8.3';
+import { startNotify, pushOn, pushOff, pushTest, checkPush } from './notify.js?v=0.8.3';
 
 const $app = document.getElementById('app');
 const $layer = document.getElementById('layer');
@@ -104,6 +105,20 @@ function toast(text, withUndo) {
   $toasts.appendChild(el); setTimeout(() => el.remove(), withUndo ? 6000 : 3500);
 }
 window.addEventListener('mph:toast', e => toast(e.detail.text, e.detail.undo));
+window.addEventListener('mph:modal', e => { ui.modal = e.detail; ui.menu = null; renderLayer(); setTimeout(() => { const f = $layer.querySelector('[data-m]'); if (f && !f.value) f.focus(); }, 40); });
+window.addEventListener('mph:closemodal', () => { ui.modal = null; renderLayer(); });
+// A reminder rings while MPH is open: a card with a soft chime, Done and Snooze.
+const $ring = document.createElement('div'); $ring.id = 'ring'; $ring.setAttribute('role', 'alert'); document.body.appendChild($ring);
+function chime() { try { const A = new (window.AudioContext || window.webkitAudioContext)(); [[880, 0], [1320, .18]].forEach(([f, t]) => { const o = A.createOscillator(), g = A.createGain(); o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0, A.currentTime + t); g.gain.linearRampToValueAtTime(.18, A.currentTime + t + .02); g.gain.exponentialRampToValueAtTime(.0001, A.currentTime + t + .9); o.connect(g).connect(A.destination); o.start(A.currentTime + t); o.stop(A.currentTime + t + 1); }); } catch (e) {} }
+window.addEventListener('mph:ring', e => {
+  const it = e.detail; const rid = (/^r:([^@]+)@/.exec(it.key || '') || [])[1] || '';
+  const card = document.createElement('div'); card.className = 'ring-card';
+  card.innerHTML = `<span class="ring-ico">${icon('bell', 18)}</span><div class="grow"><span class="eyebrow">${esc(it.body || 'Reminder')}</span><b>${esc(it.title)}</b></div>
+    <div class="ring-acts">${rid ? `<button class="btn sm" data-act="rmSnooze" data-id="${rid}" data-x="${esc(it.title)}">Snooze 10 min</button>` : ''}<button class="btn sm primary" data-act="ringClose" data-id="${rid}">Done</button></div>`;
+  $ring.appendChild(card); chime();
+});
+window.addEventListener('mph:unring', () => { $ring.innerHTML = ''; });
+if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.type === 'mph-go') { const h = new URL(e.data.url).hash; if (h) location.hash = h; } });
 
 // HELPERS
 const S = () => store.state;
@@ -181,6 +196,11 @@ const A = {
     renderLayer();
   },
   closeMenu() { ui.menu = null; renderLayer(); },
+  ringClose(el) { const c = el.closest('.ring-card'); if (c) c.remove(); const id = el.dataset.id; if (id) mutate(s => { const r = (s.reminders || []).find(z => z.id === id); if (r && !r.rep) r.done = true; }); },
+  async pushOn() { await pushOn(); render(); },
+  async pushOff() { await pushOff(); render(); },
+  pushTest() { pushTest(); },
+  notifyBrief() { mutate(s => { s.notify = Object.assign({ morning: '08:30', brief: true }, s.notify); s.notify.brief = !s.notify.brief; }); },
   goBack() { if (NAVSTACK.length > 1) history.back(); else location.hash = parentOf(location.hash || '#/home'); },
   async importPortfolio() { const n = await importPortfolio(); toast(n ? `Brought in ${n} topics from your Work Portfolio` : 'Everything from your Work Portfolio is already here'); },
   exportBackup() {
@@ -242,6 +262,7 @@ const A = {
 
 // change handlers
 const C = {
+  notifyMorning(el) { if (!el.value) return; mutate(s => { s.notify = Object.assign({ morning: '08:30', brief: true }, s.notify); s.notify.morning = el.value; }); },
   profileName(el) { mutate(s => { s.profile.name = el.value.trim(); }, 'pname'); },
   profileMotto(el) { mutate(s => { s.profile.motto = el.value.trim(); }, 'pmotto'); },
   rename(el) { const v = el.value.trim(); if (!v) { render(); return; } mutate(s => { const f = nodeIn(s, el.dataset.id); if (f) f.node.t = v; }, 'rn' + el.dataset.id); },
@@ -286,6 +307,7 @@ function colOptions(section, sel, allowNew = true) {
 }
 function modal() {
   const m = ui.modal;
+  if (m.type === 'reminder') return reminderModal(m);
   const wrap = (title, body, foot) => `<div class="scrim" data-act="modalClose"></div><div class="modal" role="dialog" aria-label="${esc(title)}"><h2 class="display">${esc(title)}</h2>${body}<div class="foot">${foot}</div></div>`;
   const placeFields = (section, col) => `<div class="two"><label><span class="label">Section</span><select class="field" data-m="section">${['learning', 'library'].map(s => `<option value="${s}" ${s === section ? 'selected' : ''}>${s === 'learning' ? 'Learning' : 'Library'}</option>`).join('')}</select></label>
     <label><span class="label">Collection</span><select class="field" data-m="col">${colOptions(section, col)}</select></label></div>
@@ -383,7 +405,7 @@ document.addEventListener('submit', async e => {
 
 // BOOT
 sb.auth.onAuthStateChange((ev, session) => {
-  if (session && session.user && (!store.user || store.user.id !== session.user.id)) { ui.authMsg = ''; startSession(session.user).then(() => setTimeout(warmContent, 1500)); }
+  if (session && session.user && (!store.user || store.user.id !== session.user.id)) { ui.authMsg = ''; startSession(session.user).then(() => { setTimeout(warmContent, 1500); startNotify(); }); }
   if (ev === 'SIGNED_OUT' && navigator.onLine) { endSession(); render(); }
 });
 (async () => {
@@ -391,7 +413,7 @@ sb.auth.onAuthStateChange((ev, session) => {
   const saved = (() => { try { const v = JSON.parse(localStorage.getItem('mph-auth') || 'null'); return v && (v.user || (v.currentSession && v.currentSession.user)); } catch (e) { return null; } })();
   let session = null;
   try { const { data } = await sb.auth.getSession(); session = data.session; } catch (e) {}
-  if (session) { await startSession(session.user); setTimeout(warmContent, 1500); }
+  if (session) { await startSession(session.user); setTimeout(warmContent, 1500); startNotify(); }
   else if (saved && !navigator.onLine) await startSession(saved);
   else render();
 })();

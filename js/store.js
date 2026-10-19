@@ -1,11 +1,11 @@
 // MPH store: login, workspace state, undo and redo, saving and syncing with Supabase.
-import { uid, clone, DEFAULT_STATUSES, mkNode, mergeProg } from './core.js?v=0.8.2';
+import { uid, clone, DEFAULT_STATUSES, mkNode, mergeProg } from './core.js?v=0.8.3';
 
 export const CONFIG = {
   url: 'https://ibudcfsqsxjgxmngwrhk.supabase.co',
   key: 'sb_publishable_26qRWYPGawMiYPUPBsI1NA_HS2MuWOv',
   bucket: 'mph-files',
-  version: '0.8.2'
+  version: '0.8.3'
 };
 
 export const sb = window.supabase.createClient(CONFIG.url, CONFIG.key, {
@@ -51,7 +51,7 @@ function normalize(d) {
   // Calendar and Notes arrive next to Today the first time (0.4)
   if (!s.home.v4) { s.home.order = s.home.order.filter(id => id !== 'calendar' && id !== 'notes'); const i = s.home.order.indexOf('today'); s.home.order.splice(i < 0 ? 0 : i + 1, 0, 'calendar', 'notes'); s.home.v4 = 1; }
   WIDGETS.forEach(w => { if (!s.home.order.includes(w.id)) s.home.order.push(w.id); });
-  s.mgoals = s.mgoals || {}; s.review = s.review || {}; s.notes = s.notes || [];
+  s.mgoals = s.mgoals || {}; s.review = s.review || {}; s.notes = s.notes || []; s.reminders = s.reminders || []; s.notify = Object.assign({ morning: '08:30', brief: true }, s.notify);
   s.tasks.forEach(t => { t.d = t.d || ''; t.wk = t.wk || ''; t.star = !!t.star; });
   s.home.order = s.home.order.filter(id => WIDGETS.some(w => w.id === id));
   if (!Array.isArray(s.statuses) || !s.statuses.length) s.statuses = clone(DEFAULT_STATUSES);

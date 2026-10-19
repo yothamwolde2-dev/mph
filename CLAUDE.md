@@ -38,6 +38,7 @@ A personal app for Yotham, used on an M1 Mac and an iPhone. It brings projects, 
 * `tools/standalone.py` builds `dist/MPH-standalone.html`, the whole app in one file that opens by double click (no server) and still signs in to Supabase. Run it on every release: `python3 tools/standalone.py <path to esbuild>` (`npm i esbuild` anywhere). Settings links to it.
 * Daily copies: `snapshot()` in store.js saves the workspace once a day to `mph_doc_state` as `snap:YYYY-MM-DD` and keeps 30. Settings, Data, Earlier versions restores one (undoable).
 * `RECOVERY.md` how to get everything back if this chat, the website or a device is lost.
+* Reminders and notifications: `js/remind.js` (when each reminder rings, time zone aware; no imports so the server can use the same file), `js/notify.js` (turn push on per device, the in app ring every 20 seconds, the Settings test). Workspace keeps `reminders: [{id, x, at (ms), rep ('' daily weekdays weekly monthly), done, t (task id)}]` and `notify: {morning, brief}`. The server is the Supabase Edge Function `mph-remind` (source in `supabase/functions/mph-remind`, with a copy of `js/remind.js`; deploy with verify_jwt off), run every minute by pg_cron job `mph-remind`. Tables: `mph_push` (one row per device subscription, RLS own) and `mph_push_sent` (what was sent, for no duplicates). The Web Push signing key: public in `notify.js` and the function, private in the database vault as `mph_vapid_private` (read only by the server through `mph_vapid_private()`). When `js/remind.js` changes, copy it into the function folder and redeploy.
 
 ## Rules for changes
 
@@ -84,7 +85,7 @@ Languages: Chinese has HSK 2 and HSK 3 open, HSK 4 and HSK 5 locked (open them w
 ## Roadmap
 
 1. Foundation (0.1): Home, Projects, Tasks, Week, Learning, Library with HTML reader, Settings, undo and redo, sync. Done.
-2. Planner: reminders with notifications on iPhone and Mac, recurring tasks, Trash with restore (still to do).
+2. Planner: reminders with notifications on iPhone and Mac (0.8.3, done). Still to do: recurring tasks, Trash with restore.
 3. Reports (0.3): weekly and monthly report for the boss as a designed PDF, choose scope and add comments.
 4. Learning (0.2, done): native Languages app (Chinese HSK 2 and 3) and native study book reader (Corporate Management Book 1), private locked content, offline.
 5. Plan (0.4, done): Plan page with month, week and day cascade, Home calendar and notes, lighter Projects with priority badges and add to tasks.
