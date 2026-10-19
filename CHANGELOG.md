@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0, 19 October 2026
+
+* Dahua book, products in 3D: every camera, detector, recorder, terminal, door station, hub, barrier, sign and charger is now a 3D model drawn with three.js and lit like a studio shot. Open a product and it turns a full 360; drag to turn it, scroll to zoom, tap 360 to turn again. Dahua's own photos are still one tap away under Product photos.
+* New chapter, Installation, from survey to handover: eight stages with who does what, an ANPR lane designer (height, distance, offset, resolution, with angles and pixels on the plate), a parking guidance planner, a PoE power budget, a commissioning checklist that is saved, and installer notes per product.
+* New chapter, City Brain and DataV, explained: the path of one signal from a Dahua device to City Brain and the DataV wall, one event end to end, four animated use cases (adaptive signals, emergency priority, incident detection, citywide parking with pay after leaving), DataV in four steps, a live DataV style wall, and the three real integration paths.
+* New chapter, Where it runs today: a 3D globe with Hangzhou, Macau, Kuala Lumpur, the Meskel Square car park in Addis Ababa, a Danish airport and the Polish Tricity, and Hangzhou year by year from 2016 to 2020. Thirteen new sources.
+* Polish: no dashes or divider lines anywhere in the book, the roadmap no longer overlaps on iPhone, softer cards, pill tabs and buttons.
+
 ## 0.8.3, 19 October 2026
 
 * Reminders on the Plan page: add one with a day, a time and a repeat (once, every day, every weekday, every week, every month), or from any task's menu with Remind me. They show in the Reminders panel, on their day in the week board and in Today on Home.

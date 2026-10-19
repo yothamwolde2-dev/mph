@@ -1,10 +1,10 @@
 // MPH Plan: month focus, the week's Big 3, a to do list for the week, every day's plan, and a weekly review.
 // Built on a simple cascade: a few outcomes for the month, three goals that move them this week,
 // and each day's short list with up to three top priorities. Everything you do not finish is easy to carry over.
-import { esc, icon, uid, today, addDays, parseD, dkey, fmtShort, isoWeek, weekKey, weekStart, weekRange, relDay, walk, locate, pathTo } from './core.js?v=0.8.3';
-import { store, mutate } from './store.js?v=0.8.3';
-import { occurrences, nextTime, fromLocal, REPEATS } from './remind.js?v=0.8.3';
-import { N, TZ, pushOn } from './notify.js?v=0.8.3';
+import { esc, icon, uid, today, addDays, parseD, dkey, fmtShort, isoWeek, weekKey, weekStart, weekRange, relDay, walk, locate, pathTo } from './core.js?v=0.9.0';
+import { store, mutate } from './store.js?v=0.9.0';
+import { occurrences, nextTime, fromLocal, REPEATS } from './remind.js?v=0.9.0';
+import { N, TZ, pushOn } from './notify.js?v=0.9.0';
 
 const S = () => store.state;
 const redraw = () => window.dispatchEvent(new Event('mph:redraw'));

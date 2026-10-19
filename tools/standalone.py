@@ -78,11 +78,12 @@ return Promise.resolve(new Response(a,{status:200,headers:{'Content-Type':'appli
 <div id="layer"></div>
 <div id="toasts" role="status"></div>
 <script>%(supa)s</script>
+<script>%(three)s</script>
 <script>%(prelude)s</script>
 <script>%(bundle)s</script>
 </body>
 </html>
-""" % {'v': version, 'icon': icon, 'css': css, 'supa': supa.replace('</script', '<\\/script'), 'prelude': prelude, 'bundle': bundle.replace('</script', '<\\/script')}
+""" % {'v': version, 'icon': icon, 'css': css, 'supa': supa.replace('</script', '<\\/script'), 'three': read('js/vendor/three.min.js').replace('</script', '<\\/script'), 'prelude': prelude, 'bundle': bundle.replace('</script', '<\\/script')}
     os.makedirs(os.path.join(ROOT, 'dist'), exist_ok=True)
     path = os.path.join(ROOT, 'dist', 'MPH-standalone.html')
     open(path, 'w', encoding='utf-8').write(html)
