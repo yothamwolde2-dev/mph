@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.3, 19 October 2026
+
+* Dahua book: every product is a 3D model again, now drawn to match Dahua's own photos: the sculpted white and black ITC439 and ITC215, the bullet camera with its sun shield and wall bracket, the grey ITC413 with its junction box, the ITC952 with its illuminator, the gunmetal ITC314 drum, the Spotter Nano, the NVR with its real rear panel, and the door stations, face terminal and guidance sign carrying the real product faces. Truer colours and softer light.
+
 ## 0.9.2, 19 October 2026
 
 * Dahua book: the first real 3D models, made from Dahua's own product photos, so shape and texture match the product: the ITC439 outdoor parking detector and the ITC952 enforcement camera. Open either and it turns a full 360. More products follow as they are generated and checked.

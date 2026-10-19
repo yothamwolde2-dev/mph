@@ -1,8 +1,8 @@
 // MPH Languages: Chinese (HSK 2, HSK 3; HSK 4 and 5 locked), German (A1), Afaan Oromo (level 1).
 // Each language says in the catalog how its screens are labelled (ui) and which device voice reads it (voice).
 // Flashcards with spaced repetition, dialogs with audio, listening drills, grammar, words.
-import { esc, icon } from './core.js?v=0.9.2';
-import { catalog, peek, progress, saveProgress } from './content.js?v=0.9.2';
+import { esc, icon } from './core.js?v=0.9.3';
+import { catalog, peek, progress, saveProgress } from './content.js?v=0.9.3';
 
 const redraw = () => window.dispatchEvent(new Event('mph:redraw'));
 const toast = (t, undo) => window.dispatchEvent(new CustomEvent('mph:toast', { detail: { text: t, undo } }));
