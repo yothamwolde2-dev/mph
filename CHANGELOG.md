@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.1, 19 October 2026
+
+* Dahua book: the drawn 3D models are gone. Products show Dahua's own photos again until real 3D models made from those photos are added. The viewer now loads textured model files (GLB) per product from content/models, turns them a full 360 and falls back to the photos.
+
 ## 0.9.0, 19 October 2026
 
 * Dahua book, products in 3D: every camera, detector, recorder, terminal, door station, hub, barrier, sign and charger is now a 3D model drawn with three.js and lit like a studio shot. Open a product and it turns a full 360; drag to turn it, scroll to zoom, tap 360 to turn again. Dahua's own photos are still one tap away under Product photos.

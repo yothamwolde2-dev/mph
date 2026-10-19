@@ -403,7 +403,7 @@ if __name__ == '__main__':
         'books': [
             {'id': 'cm1', 'title': 'Corporate Management', 'sub': 'Book 1 · How companies work, from structure to strategy', 'file': 'book-cm1', 'v': 1, 'size': sizes['book-cm1'], 'chapters': len(bk['ch']), 'kind': 'study', 'tone': 'green'},
             {'id': 'coffee', 'title': cf['title'], 'sub': cf['sub'], 'file': 'book-coffee', 'v': 1, 'size': sizes['book-coffee'], 'chapters': len(cf['sections']), 'kind': 'web', 'tone': 'coffee'},
-            {'id': 'dahua', 'title': dh['title'], 'sub': dh['sub'], 'file': 'book-dahua', 'v': 5, 'size': sizes['book-dahua'], 'chapters': len(dh['sections']), 'kind': 'web', 'tone': 'light'},
+            {'id': 'dahua', 'title': dh['title'], 'sub': dh['sub'], 'file': 'book-dahua', 'v': 6, 'size': sizes['book-dahua'], 'chapters': len(dh['sections']), 'kind': 'web', 'tone': 'light'},
             {'id': 'integration', 'title': ia['title'], 'sub': ia['sub'], 'file': 'book-integration', 'v': 1, 'size': sizes['book-integration'], 'chapters': len(ia['sections']), 'kind': 'web', 'tone': 'green'}] + series_books,
         'series': series_meta
     }
