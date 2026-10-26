@@ -1,10 +1,10 @@
 // MPH views. Each returns markup; app.js wires the actions.
-import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.9.4';
-import { store, WIDGETS, CONFIG } from './store.js?v=0.9.4';
-import { homeLearning } from './lang.js?v=0.9.4';
-import { homeBooks } from './book.js?v=0.9.4';
-import { N } from './notify.js?v=0.9.4';
-import { HW, openToday, nodeInPlan } from './plan.js?v=0.9.4';
+import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.9.5';
+import { store, WIDGETS, CONFIG } from './store.js?v=0.9.5';
+import { homeLearning } from './lang.js?v=0.9.5';
+import { homeBooks } from './book.js?v=0.9.5';
+import { N } from './notify.js?v=0.9.5';
+import { HW, openToday, nodeInPlan } from './plan.js?v=0.9.5';
 
 export const NAV = [
   { group: 'Work', items: [
@@ -60,44 +60,19 @@ function figures() {
   return { due, goalsDone: g.filter(x => x.done).length, goals: g.length, pct };
 }
 
-// HOME
+// HOME: a quiet greeting, then only what needs you: reminders, projects, the calendar
 export function home(ui) {
-  const st = S(); const f = figures(); const name = st.profile.name.trim();
-  const w = isoWeek();
-  const custom = ui.customize;
-  const hello = `${greeting()}${name ? ', ' + name : ''}`;
-  const heroText = custom
-    ? `<div style="display:flex;flex-direction:column;gap:10px;max-width:560px;margin-top:16px">
-        <input class="field" style="background:rgba(0,0,0,.4);color:#fff" data-chg="profileName" value="${esc(st.profile.name)}" placeholder="Your name for the greeting">
-        <input class="field" style="background:rgba(0,0,0,.4);color:#fff" data-chg="profileMotto" value="${esc(st.profile.motto)}" placeholder="A line under the greeting, your role or focus">
-      </div>`
-    : `<h1 class="display">${esc(hello)}</h1>${st.profile.motto ? `<p class="motto">${esc(st.profile.motto)}</p>` : ''}`;
-
-  const hero = `<section class="hero">
-    <div class="corner"><button class="btn sm" data-act="customize">${icon(custom ? 'check' : 'sliders', 15)}${custom ? 'Done' : 'Customize'}</button></div>
-    <div><div class="date">${esc(fmtLong())} · Week ${w.week}</div>${heroText}</div>
-    <div class="bottom">
-      <div class="figures">
-        <div class="fig"><b class="num">${openToday()}</b><span>Open today</span></div>
-        <div class="fig"><b class="num">${f.goalsDone}/${f.goals}</b><span>Week goals</span></div>
-        <div class="fig"><b class="num">${f.pct}%</b><span>Projects</span></div>
-      </div>
-      <div class="quick"><input data-k="quick" data-enter="quickAdd" placeholder="Add a task for today" aria-label="Add a task for today"><button class="btn" data-act="quickAdd">Add</button></div>
-    </div>
+  const st = S(); const name = st.profile.name.trim() || 'Yotham';
+  const d = new Date();
+  const day = d.toLocaleDateString('en-GB', { weekday: 'long' }), date = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
+  const hero = `<section class="h-hero" aria-label="${esc(greeting() + ', ' + name)}">
+    <div class="h-orb a"></div><div class="h-orb b"></div><div class="h-grain"></div>
+    <div class="h-top"><span class="h-day">${esc(day)}</span><span class="h-date">${esc(date)}</span></div>
+    <h1 class="h-hello"><span>${esc(greeting())},</span><b>${esc(name)}</b></h1>
   </section>`;
-
-  const order = st.home.order.filter(id => custom || !st.home.hidden.includes(id));
-  const widgets = order.map((id, i) => {
-    const hidden = st.home.hidden.includes(id);
-    const ctl = custom ? `<div class="custom-bar">
-      <button class="iconbtn" style="width:30px;height:30px" data-act="wMove" data-id="${id}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Move up">${icon('up', 15)}</button>
-      <button class="iconbtn" style="width:30px;height:30px" data-act="wMove" data-id="${id}" data-d="1" ${i === order.length - 1 ? 'disabled' : ''} aria-label="Move down">${icon('down', 15)}</button>
-      <button class="iconbtn" style="width:30px;height:30px" data-act="wToggle" data-id="${id}" aria-label="${hidden ? 'Show' : 'Hide'}">${icon(hidden ? 'eyeoff' : 'eye', 15)}</button>
-    </div>` : '';
-    const body = W[id] ? W[id]() : '';
-    return `<section class="panel w-${id}" style="${hidden ? 'opacity:.35' : ''}">${ctl}${body}</section>`;
-  }).join('');
-  return `${hero}<div class="grid">${widgets}</div>`;
+  const rem = HW.reminders();
+  const left = (rem ? `<section class="panel h-rem">${rem}</section>` : '') + `<section class="panel h-proj">${W.projects()}</section>`;
+  return `${hero}<div class="h-grid"><div class="h-col">${left}</div><section class="panel h-cal">${W.calendar()}</section></div>`;
 }
 
 const ptitle = (label, link, href) => `<div class="ptitle"><i class="tick"></i><span class="eyebrow">${label}</span><span class="sp"></span>${link ? `<a class="link" href="${href}">${link}</a>` : ''}</div>`;
@@ -205,7 +180,7 @@ export function drawer(id) {
   const del = `<div><button class="btn danger" data-act="delNode" data-id="${n.id}">${icon('trash', 15)}Delete ${isArea ? 'topic' : isSub ? 'sub item' : 'project'}</button></div>`;
   const head = `<div class="scrim" data-act="closeDrawer"></div>
   <aside class="drawer ${isSub ? 'light' : ''}" role="dialog" aria-label="Item details">
-    <header><span class="path">${esc(trail.slice(0, -1).map(t => t.t).join(' / ') || 'Topic')}</span><button class="iconbtn" data-act="closeDrawer" aria-label="Close">${icon('x', 16)}</button></header>
+    <header><button class="topback drback" data-act="closeDrawer" aria-label="Back">${icon('left', 16)}<span>Back</span></button><span class="path">${esc(trail.slice(0, -1).map(t => t.t).join(' / ') || 'Topic')}</span><button class="iconbtn drx" data-act="closeDrawer" aria-label="Close">${icon('x', 16)}</button></header>
     <div class="body">
       <div><textarea class="inline big" rows="2" style="resize:none;overflow:hidden" data-chg="rename" data-id="${n.id}" aria-label="Name">${esc(n.t)}</textarea>
       ${isSub ? '' : `<input class="inline muted" style="margin-top:6px" data-chg="desc" data-id="${n.id}" value="${esc(n.s)}" placeholder="Add a short description">`}</div>`;
@@ -268,7 +243,6 @@ export function settings() {
       <div class="setrow"><div class="grow"><b style="font-size:13.5px">Morning time</b><div class="faint" style="font-size:12px">Project reminders and the daily briefing ring at this time</div></div><input class="field sm" type="time" style="width:136px" data-chg="notifyMorning" value="${esc((st.notify || {}).morning || '08:30')}" aria-label="Morning time"></div>
       <div class="setrow"><div class="grow"><b style="font-size:13.5px">Daily briefing</b><div class="faint" style="font-size:12px">Every morning: how many tasks today and your top priorities</div></div><button class="switch ${(st.notify || {}).brief !== false ? 'on' : ''}" data-act="notifyBrief" aria-label="Daily briefing"></button></div>
     </section>
-    <section class="panel">${ptitle('Home layout')}${st.home.order.map(id => WIDGETS.find(w => w.id === id)).filter(Boolean).map(wrow).join('')}</section>
     <section class="panel">${ptitle('Statuses')}${st.statuses.map(s => `<div class="setrow"><i class="dot" style="background:${s.color};width:12px;height:12px"></i><div class="grow"><input class="inline" data-chg="statusLabel" data-k2="${esc(s.key)}" value="${esc(s.label)}" aria-label="Status name"></div></div>`).join('')}</section>
     <section class="panel">${ptitle('Templates')}${st.templates.map(t => `<label><span class="label">${esc(t.name)} · one item per line</span><textarea class="field" rows="6" data-chg="template" data-id="${t.id}">${esc(t.items.join('\n'))}</textarea></label>`).join('')}</section>
     <section class="panel">${ptitle('Data')}

@@ -44,7 +44,8 @@ A personal app for Yotham, used on an M1 Mac and an iPhone. It brings projects, 
 
 * Every change to the workspace goes through `mutate(fn, key)` so it can be undone. Use `touch(fn)` only for things that should not be undoable (for example "last opened").
 * Click actions use `data-act="name"` and live in `A`; field changes use `data-chg="name"` and live in `C`; Enter in a field uses `data-enter="name"`.
-* New home widgets: add to `WIDGETS` in `store.js` and a renderer in `W` in `views.js`.
+* Home (since 0.9.5) is deliberately minimal: the greeting hero (`h-hero`, name from the profile, default Yotham), then reminders for the next seven days (`HW.reminders()`, hidden when empty), the projects pulse and the calendar. Do not add more to it without Yotham asking. `WIDGETS` and `W` remain for the old widgets.
+* The item drawer is a history step (`drPush()`), so Back and the phone's back gesture close it.
 * New screens: add a view function, a route in `render()` and an entry in `NAV` (and `TABS` for the iPhone tab bar, five at most). The top bar Back button (`goBack`) returns to the previous screen and falls back to `parentOf()`; extend `parentOf()` for nested routes.
 * Never use a minus sign or dash as an icon for delete; use `trash`.
 * Bump `CONFIG.version`, every `?v=` query (index.html, the imports in js files, sw.js) and the cache name in `sw.js` on every release so devices pick up the new version. Add a line to `CHANGELOG.md`. Rebuild `dist/MPH-standalone.html`.

@@ -1,10 +1,10 @@
 // MPH Plan: month focus, the week's Big 3, a to do list for the week, every day's plan, and a weekly review.
 // Built on a simple cascade: a few outcomes for the month, three goals that move them this week,
 // and each day's short list with up to three top priorities. Everything you do not finish is easy to carry over.
-import { esc, icon, uid, today, addDays, parseD, dkey, fmtShort, isoWeek, weekKey, weekStart, weekRange, relDay, walk, locate, pathTo } from './core.js?v=0.9.4';
-import { store, mutate } from './store.js?v=0.9.4';
-import { occurrences, nextTime, fromLocal, REPEATS } from './remind.js?v=0.9.4';
-import { N, TZ, pushOn } from './notify.js?v=0.9.4';
+import { esc, icon, uid, today, addDays, parseD, dkey, fmtShort, isoWeek, weekKey, weekStart, weekRange, relDay, walk, locate, pathTo } from './core.js?v=0.9.5';
+import { store, mutate } from './store.js?v=0.9.5';
+import { occurrences, nextTime, fromLocal, REPEATS } from './remind.js?v=0.9.5';
+import { N, TZ, pushOn } from './notify.js?v=0.9.5';
 
 const S = () => store.state;
 const redraw = () => window.dispatchEvent(new Event('mph:redraw'));
@@ -187,6 +187,12 @@ export function planView() {
 
 // HOME WIDGETS
 export const HW = {
+  // Home: the reminders of the next seven days, nothing when there are none
+  reminders() {
+    const t = today(); const list = upcoming().filter(x => dayOf(x.at) <= addDays(t, 6));
+    if (!list.length) return '';
+    return ptitle('Reminders', 'Open plan', '#/plan') + `<div class="rm-list">${list.slice(0, 5).map(x => remRowT(x)).join('')}</div>${list.length > 5 ? `<a class="link h-more" href="#/plan">${list.length - 5} more this week</a>` : ''}`;
+  },
   today() {
     const t = today(); const it = dayItems(t); const late = lateTasks();
     const rows = remsOnDay(t).filter(x => !x.r.done).map(x => remRowT(x, true)).join('') + late.map(x => taskRow(x, { late: true })).join('') + it.tasks.map(x => taskRow(x)).join('') + it.rems.map(remRow).join('') + it.dues.map(dueRow).join('');

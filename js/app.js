@@ -1,13 +1,13 @@
 // MPH app: routing, rendering, actions, upload and the HTML reader.
-import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.9.4';
-import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG, snapshot, listSnapshots, readSnapshot } from './store.js?v=0.9.4';
-import * as V from './views.js?v=0.9.4';
-import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.9.4';
-import { LA, LC, learningHub, langView, stopSpeech } from './lang.js?v=0.9.4';
-import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView, seriesView } from './book.js?v=0.9.4';
-import { warmContent } from './content.js?v=0.9.4';
-import { planView, PA, PC, taskMenu, addTaskMenu, reminderModal } from './plan.js?v=0.9.4';
-import { startNotify, pushOn, pushOff, pushTest, checkPush } from './notify.js?v=0.9.4';
+import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.9.5';
+import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG, snapshot, listSnapshots, readSnapshot } from './store.js?v=0.9.5';
+import * as V from './views.js?v=0.9.5';
+import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.9.5';
+import { LA, LC, learningHub, langView, stopSpeech } from './lang.js?v=0.9.5';
+import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView, seriesView } from './book.js?v=0.9.5';
+import { warmContent } from './content.js?v=0.9.5';
+import { planView, PA, PC, taskMenu, addTaskMenu, reminderModal } from './plan.js?v=0.9.5';
+import { startNotify, pushOn, pushOff, pushTest, checkPush } from './notify.js?v=0.9.5';
 
 const $app = document.getElementById('app');
 const $layer = document.getElementById('layer');
@@ -82,6 +82,9 @@ window.addEventListener('hashchange', e => {
   ui.menu = null; ui.drawer = null; window.scrollTo(0, 0); render();
 });
 window.addEventListener('mph:redraw', () => queueRender());
+// The item panel is a step in history, so the phone's back gesture and the Back button close it.
+function drPush() { if (!(history.state && history.state.dr)) history.pushState({ dr: 1 }, ''); }
+window.addEventListener('popstate', () => { if (ui.drawer && !(history.state && history.state.dr)) { ui.drawer = null; renderLayer(); } });
 
 // INSTALL: show how to turn MPH into an app until it runs as one
 const standalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
@@ -154,12 +157,12 @@ const A = {
   toggle(el, e) { if (e.target.closest('[data-stop]')) return; const id = el.dataset.id; ui.open[id] = !ui.open[id]; keep('mph:open', ui.open); render(); },
   expandAll() { ui.allOpen = !ui.allOpen; const set = (arr) => arr.forEach(n => { if (n.k && n.k.length) { ui.open[n.id] = ui.allOpen; set(n.k); } }); S().areas.forEach(a => { ui.open[a.id] = ui.allOpen; set(a.k || []); }); keep('mph:open', ui.open); render(); },
   addArea() { const n = mkNode('New topic', ''); mutate(s => s.areas.push(n)); ui.open[n.id] = true; keep('mph:open', ui.open); setTimeout(() => { const el = document.querySelector(`#a-${n.id} input`); if (el) { el.focus(); el.select(); el.scrollIntoView({ block: 'center' }); } }, 30); },
-  addChild(el) { const pid = el.dataset.id; const n = mkNode('New item', 'Next'); mutate(s => { const f = nodeIn(s, pid); if (f) f.node.k.push(n); }); ui.open[pid] = true; keep('mph:open', ui.open); ui.drawer = n.id; render(); focusDrawerTitle(); },
+  addChild(el) { const pid = el.dataset.id; const n = mkNode('New item', 'Next'); mutate(s => { const f = nodeIn(s, pid); if (f) f.node.k.push(n); }); ui.open[pid] = true; keep('mph:open', ui.open); ui.drawer = n.id; drPush(); render(); focusDrawerTitle(); },
   addFromTemplate(el) {
     const t = S().templates.find(t => t.id === el.dataset.t); if (!t) return;
     const n = mkNode('New company', 'Next', '', t.items.map(x => mkNode(x, 'Next')));
     mutate(s => { const f = nodeIn(s, el.dataset.id); if (f) f.node.k.push(n); });
-    ui.open[el.dataset.id] = true; keep('mph:open', ui.open); ui.drawer = n.id; render(); focusDrawerTitle();
+    ui.open[el.dataset.id] = true; keep('mph:open', ui.open); ui.drawer = n.id; drPush(); render(); focusDrawerTitle();
   },
   addSub(el) { const inp = el.tagName === 'INPUT' ? el : near(el, 'input'); const x = inp.value.trim(); if (!x) return; ui.wantFocus = inp.dataset.k; mutate(s => { const f = nodeIn(s, el.dataset.id); if (f) f.node.k.push(mkNode(x, 'Next')); }); ui.open[el.dataset.id] = true; keep('mph:open', ui.open); },
   delNode(el) {
@@ -168,8 +171,8 @@ const A = {
     if (ui.drawer && !find(ui.drawer)) { ui.drawer = null; render(); }
     ui.menu = null; toast(`Deleted ${name}`, true);
   },
-  openNode(el) { ui.drawer = el.dataset.id; renderLayer(); },
-  closeDrawer() { ui.drawer = null; renderLayer(); },
+  openNode(el) { ui.drawer = el.dataset.id; drPush(); renderLayer(); },
+  closeDrawer() { if (history.state && history.state.dr) history.back(); else { ui.drawer = null; renderLayer(); } },
   prioCycle(el) { const order = ['', 'High', 'Medium', 'Low']; mutate(s => { const f = nodeIn(s, el.dataset.id); if (f) f.node.pr = order[(order.indexOf(f.node.pr || '') + 1) % 4]; }); },
   prioSet(el) { mutate(s => { const f = nodeIn(s, el.dataset.id); if (f) f.node.pr = el.dataset.v; }); },
   dueShow(el) { el.hidden = true; const i = document.getElementById('due-' + el.dataset.id); if (i) { i.hidden = false; try { i.showPicker ? i.showPicker() : i.focus(); } catch (e) { i.focus(); } } },
@@ -185,7 +188,7 @@ const A = {
     if (act === 'aAdd') return A.addChild({ dataset: { id } });
     if (act === 'aUp' || act === 'aDown') { mutate(s => { const i = s.areas.findIndex(a => a.id === id), j = i + (act === 'aUp' ? -1 : 1); if (j < 0 || j >= s.areas.length) return; [s.areas[i], s.areas[j]] = [s.areas[j], s.areas[i]]; }); return; }
     if (act === 'aDel') return A.delNode({ dataset: { id } });
-    if (act === 'aOpen') { ui.drawer = id; return renderLayer(); }
+    if (act === 'aOpen') { ui.drawer = id; drPush(); return renderLayer(); }
     if (act === 'dOpen') { location.hash = '#/read/' + id; return; }
     if (act === 'dRename') { const d = S().docs.find(d => d.id === id); ui.modal = { type: 'rename', id, value: d.title }; return renderLayer(); }
     if (act === 'dMove') { const d = S().docs.find(d => d.id === id); ui.modal = { type: 'move', id, section: d.section, col: d.col }; return renderLayer(); }
@@ -378,7 +381,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && el.dataset && el.dataset.enter && !e.shiftKey) { e.preventDefault(); A[el.dataset.enter] && A[el.dataset.enter](el); return; }
   if (e.key === 'Enter' && el.classList && el.classList.contains('doc')) { A.openDoc(el); return; }
   if (e.key === 'Enter' && el.matches && el.matches('textarea.big')) { e.preventDefault(); el.blur(); return; }
-  if (e.key === 'Escape') { if (ui.menu) ui.menu = null; else if (ui.modal) ui.modal = null; else if (ui.drawer) ui.drawer = null; else if (ui.customize) { ui.customize = false; render(); } renderLayer(); return; }
+  if (e.key === 'Escape') { if (ui.menu) ui.menu = null; else if (ui.modal) ui.modal = null; else if (ui.drawer) return A.closeDrawer(); else if (ui.customize) { ui.customize = false; render(); } renderLayer(); return; }
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName);
   if ((e.metaKey || e.ctrlKey) && !typing) {
     const k = e.key.toLowerCase();
