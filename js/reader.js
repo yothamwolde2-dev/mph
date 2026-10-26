@@ -1,9 +1,9 @@
 // MPH reader: opens an uploaded HTML document in a sandbox and adds reading tools around it.
 // Resume position, bookmarks, highlights with notes, contents, search, text size, progress, focus mode.
 // The document talks to MPH only through postMessage, so it can never reach your login or data.
-import { esc, icon, uid } from './core.js?v=0.9.5';
-import { store, mutate, touch, readDoc, readDocState, saveDocState } from './store.js?v=0.9.5';
-import { colName } from './views.js?v=0.9.5';
+import { esc, icon, uid } from './core.js?v=0.9.6';
+import { store, mutate, touch, readDoc, readDocState, saveDocState } from './store.js?v=0.9.6';
+import { colName } from './views.js?v=0.9.6';
 
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
 const keep = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };

@@ -1014,8 +1014,8 @@ button.pg-hw:hover{background:var(--panel-2)}
 .h-top{display:flex;align-items:baseline;gap:14px;font-size:11px;font-weight:800;letter-spacing:.28em;text-transform:uppercase}
 .h-day{color:#fff}.h-date{color:rgba(255,255,255,.5)}
 .h-hello{font-family:var(--display);text-transform:uppercase;font-weight:900;margin:0;animation:hrise .9s cubic-bezier(.2,.7,.2,1) both}
-.h-hello span{display:block;font-size:clamp(26px,4.4vw,62px);letter-spacing:-.015em;line-height:1;color:rgba(255,255,255,.92)}
-.h-hello b{display:block;font-weight:900;font-size:clamp(68px,14vw,210px);letter-spacing:-.045em;line-height:.84;margin-top:.08em;color:var(--green)}
+.h-hello span{display:block;font-weight:600;font-size:clamp(18px,2.4vw,30px);letter-spacing:.02em;line-height:1;color:rgba(255,255,255,.62)}
+.h-hello b{display:block;width:fit-content;font-weight:700;font-size:clamp(46px,8.2vw,124px);letter-spacing:-.03em;line-height:.95;margin-top:.12em;color:#fff;background:linear-gradient(100deg,#FFFFFF 0%,#FFFFFF 38%,#CFEFD4 66%,#7FD08B 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;padding-bottom:.04em}
 @keyframes hrise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 .h-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,1fr);gap:14px;margin-top:14px;align-items:start}
 .h-col{display:flex;flex-direction:column;gap:14px;min-width:0}

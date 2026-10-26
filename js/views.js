@@ -1,10 +1,10 @@
 // MPH views. Each returns markup; app.js wires the actions.
-import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.9.5';
-import { store, WIDGETS, CONFIG } from './store.js?v=0.9.5';
-import { homeLearning } from './lang.js?v=0.9.5';
-import { homeBooks } from './book.js?v=0.9.5';
-import { N } from './notify.js?v=0.9.5';
-import { HW, openToday, nodeInPlan } from './plan.js?v=0.9.5';
+import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=0.9.6';
+import { store, WIDGETS, CONFIG } from './store.js?v=0.9.6';
+import { homeLearning } from './lang.js?v=0.9.6';
+import { homeBooks } from './book.js?v=0.9.6';
+import { N } from './notify.js?v=0.9.6';
+import { HW, openToday, nodeInPlan } from './plan.js?v=0.9.6';
 
 export const NAV = [
   { group: 'Work', items: [

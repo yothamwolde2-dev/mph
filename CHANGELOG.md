@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.6, 26 October 2026
+
+* Home: a softer greeting. Your name is smaller and lighter, white fading into a pale green, with the greeting above it in quiet grey.
+
 ## 0.9.5, 26 October 2026
 
 * Home, redesigned: a quiet black hero with a slow green glow and one greeting, Good afternoon, Yotham. Below it only what needs you: your reminders for the week (shown only when there are some), the projects pulse and the calendar.
