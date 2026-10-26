@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.4, 26 October 2026
+
+* Dahua book: the 3D models are gone. Every product shows Dahua's own photo again, cropped close so the product fills its card, on the same light grey as Dahua's website. Hover a card and the product grows, as on dahuasecurity.com, and the View button turns green. Open a product to see every angle Dahua publishes; hover the large photo to look closer. Photos added for the ITC215, ITC431 Spotter Nano, the indoor dome and DSS. The photos now live inside the book, so they load fast and work offline.
+
 ## 0.9.3, 19 October 2026
 
 * Dahua book: every product is a 3D model again, now drawn to match Dahua's own photos: the sculpted white and black ITC439 and ITC215, the bullet camera with its sun shield and wall bracket, the grey ITC413 with its junction box, the ITC952 with its illuminator, the gunmetal ITC314 drum, the Spotter Nano, the NVR with its real rear panel, and the door stations, face terminal and guidance sign carrying the real product faces. Truer colours and softer light.
