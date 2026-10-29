@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.7, 29 October 2026
+
+* Library: new book, Mansen Smart City Project Explanation. An interactive guide to the Shaggar City proposal (roadway AI cameras, smart parking, EV charging, one control platform): tap any underlined word for its meaning, play with simulators for the corridor, network ring, gate, charger power sharing, storage and the programme, a glossary, a quiz, and a Present mode that turns every chapter into a full screen slide.
+
 ## 0.9.6, 26 October 2026
 
 * Home: a softer greeting. Your name is smaller and lighter, white fading into a pale green, with the greeting above it in quiet grey.

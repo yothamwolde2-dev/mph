@@ -1,7 +1,7 @@
 // MPH private content: courses and books that Yotham sends to Claude.
 // Files in /content are locked (AES-256-GCM). The key is read once from Yotham's private
 // Supabase table after sign in, then kept on the device so everything opens offline.
-import { sb, store, readDocState, saveDocState, CONFIG } from './store.js?v=0.9.6';
+import { sb, store, readDocState, saveDocState, CONFIG } from './store.js?v=0.9.7';
 
 const mem = new Map();
 let keyPromise = null;
