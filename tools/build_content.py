@@ -365,6 +365,32 @@ $P #x00{min-height:78vh}
     return web_convert(html, 'smartcity', 'Mansen Smart City Project Explanation', 'Shaggar City · Roadway AI, smart parking and EV charging, explained and ready to present',
                        'section.ch', lambda a: {'t': a.get('data-title'), 'part': a.get('data-part')}, ['#sctop'], extra, lambda sid: gl if sid == 'x15' else '')
 
+def branding():
+    html = open(src('branding.html'), encoding='utf-8').read()
+    extra = """
+$P{background:#F6F5F1;color:#0A0A0A;font-family:var(--f);font-size:17px;line-height:1.72}
+$P section.ch{scroll-margin-top:124px}
+$P #b00{min-height:84vh}
+"""
+    return web_convert(html, 'branding', 'Brand. The 2026 Edition', 'What makes a company stand out when anyone can make a logo · strategy, identity, AI, value and protection',
+                       'section.ch', lambda a: {'t': a.get('data-title'), 'part': a.get('data-part')}, ['#bbtop'], extra)
+
+
+def incoterms():
+    html = open(src('incoterms.html'), encoding='utf-8').read()
+    js = html[html.index('<script>'):]
+    cut = lambda a, b: web_plain(re.sub(r'[\[\]{}\'"]', ' ', js[js.index(a):js.index(b)]))
+    data = {'i04': cut('var R={', 'var ORDER'), 'i13': cut('var CASES', 'function caseDraw'), 'i15': cut('var QZ', 'var QS'), 'i16': cut('var GL', 'function glDraw'),
+            'i07': cut('var LAD', 'var li'), 'i10': cut('var DOCS', 'var dsel')}
+    extra = """
+$P{background:#000;color:#fff;font-family:var(--f);font-size:16.5px;line-height:1.66}
+$P section.ch{scroll-margin-top:124px}
+$P #i00{min-height:84vh}
+"""
+    return web_convert(html, 'incoterms', 'Incoterms and Payment', 'International Business · Topic one · Risk, cost and getting paid, learned by watching the goods move',
+                       'section.ch', lambda a: {'t': a.get('data-title'), 'part': a.get('data-part')}, ['#ictop'], extra, lambda sid: data.get(sid, ''))
+
+
 
 if __name__ == '__main__':
     sizes = {}
@@ -390,6 +416,9 @@ if __name__ == '__main__':
         series_meta.append(sr)
     cf, dh, ia = coffee(), dahua(), integration()
     scy = smartcity()
+    brd, inc = branding(), incoterms()
+    sizes['book-branding'] = lock('book-branding', brd)
+    sizes['book-incoterms'] = lock('book-incoterms', inc)
     sizes['book-smartcity'] = lock('book-smartcity', scy)
     sizes['book-integration'] = lock('book-integration', ia)
     sizes['book-coffee'] = lock('book-coffee', cf)
@@ -420,7 +449,9 @@ if __name__ == '__main__':
             {'id': 'coffee', 'title': cf['title'], 'sub': cf['sub'], 'file': 'book-coffee', 'v': 1, 'size': sizes['book-coffee'], 'chapters': len(cf['sections']), 'kind': 'web', 'tone': 'coffee'},
             {'id': 'dahua', 'title': dh['title'], 'sub': dh['sub'], 'file': 'book-dahua', 'v': 9, 'size': sizes['book-dahua'], 'chapters': len(dh['sections']), 'kind': 'web', 'tone': 'light'},
             {'id': 'integration', 'title': ia['title'], 'sub': ia['sub'], 'file': 'book-integration', 'v': 1, 'size': sizes['book-integration'], 'chapters': len(ia['sections']), 'kind': 'web', 'tone': 'green'},
-            {'id': 'smartcity', 'title': scy['title'], 'sub': scy['sub'], 'file': 'book-smartcity', 'v': 1, 'size': sizes['book-smartcity'], 'chapters': len(scy['sections']), 'kind': 'web', 'tone': 'green'}] + series_books,
+            {'id': 'smartcity', 'title': scy['title'], 'sub': scy['sub'], 'file': 'book-smartcity', 'v': 1, 'size': sizes['book-smartcity'], 'chapters': len(scy['sections']), 'kind': 'web', 'tone': 'green'},
+            {'id': 'incoterms', 'title': inc['title'], 'sub': inc['sub'], 'file': 'book-incoterms', 'v': 1, 'size': sizes['book-incoterms'], 'chapters': len(inc['sections']), 'kind': 'web', 'tone': 'green'},
+            {'id': 'branding', 'title': brd['title'], 'sub': brd['sub'], 'file': 'book-branding', 'v': 1, 'size': sizes['book-branding'], 'chapters': len(brd['sections']), 'kind': 'web', 'tone': 'light'}] + series_books,
         'series': series_meta
     }
     lock('index', index)

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.8, 30 October 2026
+
+* Library: new book, Incoterms and Payment, the first topic of International Business. The eleven Incoterms 2020 rules animated from the seller's warehouse to the buyer's door (risk and cost bars, customs, insurance, the A1 to A10 and B1 to B10 obligations), a loss simulator with Institute Cargo Clauses, the Djibouti corridor (FOB Djibouti against FCA Modjo), general average, the payment ladder, animated letter of credit and D/P and D/A collections, a UCP 600 discrepancy desk, guarantees and digital trade, Ethiopian NBE and ECTA rules, eighteen real case files, a terms chooser, a twenty question test and a glossary.
+* Library: new book, Brand. The 2026 Edition. Twelve chapters from what a brand is (with the masters' own words) to strategy, guidelines, visual identity, the website in the AI era, applications, branding with AI and copyright, gender and brands, brand value, protection in Ethiopia, brands of Africa and the twelve steps to working like a professional. Real case files, a positioning builder, a distinctive asset grid, a touchpoint audit and checklists that remember.
+
 ## 0.9.7, 29 October 2026
 
 * Library: new book, Mansen Smart City Project Explanation. An interactive guide to the Shaggar City proposal (roadway AI cameras, smart parking, EV charging, one control platform): tap any underlined word for its meaning, play with simulators for the corridor, network ring, gate, charger power sharing, storage and the programme, a glossary, a quiz, and a Present mode that turns every chapter into a full screen slide.
