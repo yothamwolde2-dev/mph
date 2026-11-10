@@ -1,10 +1,10 @@
 // MPH Plan: month focus, the week's Big 3, a to do list for the week, every day's plan, and a weekly review.
 // Built on a simple cascade: a few outcomes for the month, three goals that move them this week,
-// and each day's short list with up to three top priorities. Everything you do not finish is easy to carry over.
-import { esc, icon, uid, today, addDays, parseD, dkey, fmtShort, isoWeek, weekKey, weekStart, weekRange, relDay, walk, locate, pathTo } from './core.js?v=0.9.8';
-import { store, mutate } from './store.js?v=0.9.8';
-import { occurrences, nextTime, fromLocal, REPEATS } from './remind.js?v=0.9.8';
-import { N, TZ, pushOn } from './notify.js?v=0.9.8';
+// and each day's short list with up to three top priorities. Unfinished tasks stay on the day they were planned. Each day has its own summary.
+import { esc, icon, uid, today, addDays, parseD, dkey, fmtShort, isoWeek, weekKey, weekStart, weekRange, relDay, walk, locate, pathTo } from './core.js?v=0.9.9';
+import { store, mutate } from './store.js?v=0.9.9';
+import { occurrences, nextTime, fromLocal, REPEATS } from './remind.js?v=0.9.9';
+import { N, TZ, pushOn } from './notify.js?v=0.9.9';
 
 const S = () => store.state;
 const redraw = () => window.dispatchEvent(new Event('mph:redraw'));
@@ -39,7 +39,8 @@ export function dayItems(d) {
   return { tasks, rems, dues };
 }
 const weekList = w => S().tasks.filter(t => !t.d && (t.wk === w.wk || (!t.wk && PL.off === 0 && w.wk === weekKey())));
-const lateTasks = () => { const t = today(); return S().tasks.filter(x => x.d && x.d < t && !x.done); };
+// Unfinished tasks stay on the day they were planned (0.9.9): nothing is pulled forward into today.
+const lateTasks = () => [];
 export const openToday = () => { const t = today(); const it = dayItems(t); return it.tasks.filter(x => !x.done).length + it.rems.filter(x => !x.done).length + it.dues.filter(x => !x.done).length + lateTasks().length; };
 
 // ROWS
@@ -160,14 +161,14 @@ export function planView() {
     const open = it.tasks.filter(x => !x.done).length + it.rems.filter(x => !x.done).length + it.dues.filter(x => !x.done).length;
     const total = it.tasks.length + it.rems.length + it.dues.length;
     const collapsed = PL.open[d] === undefined ? (past && !isT) : !PL.open[d];
-    const lateHere = isT ? late.filter(x => x.d !== t) : [];
     const sel = PL.day === d;
     return `<div class="pl-day ${isT ? 'today' : ''} ${past ? 'past' : ''} ${collapsed ? 'shut' : ''} ${sel ? 'sel' : ''}" data-dropday="${d}" id="day-${d}">
       <button class="pl-dh" data-act="plDay" data-d="${d}"><span class="pl-dn">${DAYN[i]}</span><b class="num">${parseD(d).getDate()}</b><span class="pl-dc">${isT ? 'Today' : total ? `${total - open}/${total}` : ''}</span></button>
       <div class="pl-db">
-        ${lateHere.length ? `<div class="pl-late"><span>${lateHere.length} from earlier days</span><button class="btn sm" data-act="plCarry">Move to today</button></div>${lateHere.map(x => taskRow(x, { late: true })).join('')}` : ''}
+        <span class="pl-sec">Tasks</span>
         ${remsOnDay(d).map(x => remRowT(x, true)).join('')}${it.tasks.map(x => taskRow(x)).join('')}${it.rems.map(remRow).join('')}${it.dues.map(dueRow).join('')}
-        <input class="field pl-add" data-k="day-${d}" data-enter="plAdd" data-d="${d}" placeholder="${isT ? 'Add to today' : 'Add'}">
+        <input class="field pl-add" data-k="day-${d}" data-enter="plAdd" data-d="${d}" placeholder="${isT ? 'Add to today' : 'Add a task'}">
+        <label class="pl-sum"><span class="pl-sec">Summary</span><textarea class="field" rows="3" data-k="sum-${d}" data-chg="plDaySum" data-d="${d}" placeholder="How the day went">${esc(((st.daysum || {})[d]) || '')}</textarea></label>
       </div></div>`;
   }).join('')}</section>`;
 
@@ -352,6 +353,7 @@ export const PC = {
   plEdit(el) { PL.edit = null; const v = el.value.trim(); if (!v) return redraw(); mutate(s => { const t = s.tasks.find(x => x.id === el.dataset.id); if (t) t.x = v; }, 'te' + el.dataset.id); },
   plMgEdit(el) { PL.edit = null; const v = el.value.trim(); if (!v) return redraw(); mutate(s => { const g = ((s.mgoals || {})[el.dataset.m] || []).find(x => x.id === el.dataset.id); if (g) g.x = v; }); },
   plGoalLink(el) { mutate(s => { const g = (s.goals[el.dataset.w] || []).find(x => x.id === el.dataset.id); if (g) g.m = el.value; }); },
+  plDaySum(el) { const d = el.dataset.d; mutate(s => { s.daysum = s.daysum || {}; const v = el.value.trim(); if (v) s.daysum[d] = el.value; else delete s.daysum[d]; }, 'ds' + d); },
   plReview(el) { mutate(s => { s.review = s.review || {}; const r = s.review[el.dataset.w] = s.review[el.dataset.w] || {}; r[el.dataset.q] = el.value; }, 'rv' + el.dataset.w + el.dataset.q); },
   noteEdit(el) { mutate(s => { const n = (s.notes || []).find(x => x.id === el.dataset.id); if (n) { n.x = el.value; n.at = Date.now(); } }, 'nt' + el.dataset.id); }
 };

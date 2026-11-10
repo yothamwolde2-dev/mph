@@ -947,7 +947,11 @@ button.pg-hw:hover{background:var(--panel-2)}
 .pl-star.on{color:var(--green)}
 .pl-star.on svg{fill:currentColor}
 .pl-task.rem .pl-t,.pl-task.due .pl-t{cursor:pointer}
-.pl-add{height:34px;margin-top:auto;background:transparent;font-size:12.5px;padding:0 6px}
+.pl-sec{display:block;font-size:9.5px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-3);padding:0 4px 6px}
+.pl-sum{display:block;margin-top:auto;padding-top:18px}
+.pl-sum textarea{width:100%;min-height:74px;resize:vertical;font-size:12.5px;line-height:1.45;padding:8px 6px;background:transparent}
+.pl-sum textarea:focus{background:var(--control)}
+.pl-add{height:34px;background:transparent;font-size:12.5px;padding:0 6px}
 .pl-add:focus{background:var(--control)}
 .pl-late{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;font-size:11px;font-weight:700;color:#E0705C;padding:4px 4px 6px}
 .pl-task.dragging{opacity:.35}

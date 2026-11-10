@@ -1,13 +1,13 @@
 // MPH app: routing, rendering, actions, upload and the HTML reader.
-import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.9.8';
-import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG, snapshot, listSnapshots, readSnapshot } from './store.js?v=0.9.8';
-import * as V from './views.js?v=0.9.8';
-import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.9.8';
-import { LA, LC, learningHub, langView, stopSpeech } from './lang.js?v=0.9.8';
-import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView, seriesView } from './book.js?v=0.9.8';
-import { warmContent } from './content.js?v=0.9.8';
-import { planView, PA, PC, taskMenu, addTaskMenu, reminderModal } from './plan.js?v=0.9.8';
-import { startNotify, pushOn, pushOff, pushTest, checkPush } from './notify.js?v=0.9.8';
+import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.9.9';
+import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG, snapshot, listSnapshots, readSnapshot } from './store.js?v=0.9.9';
+import * as V from './views.js?v=0.9.9';
+import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.9.9';
+import { LA, LC, learningHub, langView, stopSpeech } from './lang.js?v=0.9.9';
+import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView, seriesView } from './book.js?v=0.9.9';
+import { warmContent } from './content.js?v=0.9.9';
+import { planView, PA, PC, taskMenu, addTaskMenu, reminderModal } from './plan.js?v=0.9.9';
+import { startNotify, pushOn, pushOff, pushTest, checkPush } from './notify.js?v=0.9.9';
 
 const $app = document.getElementById('app');
 const $layer = document.getElementById('layer');
