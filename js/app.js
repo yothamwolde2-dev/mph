@@ -1,13 +1,14 @@
 // MPH app: routing, rendering, actions, upload and the HTML reader.
-import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=0.9.9';
-import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG, snapshot, listSnapshots, readSnapshot } from './store.js?v=0.9.9';
-import * as V from './views.js?v=0.9.9';
-import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=0.9.9';
-import { LA, LC, learningHub, langView, stopSpeech } from './lang.js?v=0.9.9';
-import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView, seriesView } from './book.js?v=0.9.9';
-import { warmContent } from './content.js?v=0.9.9';
-import { planView, PA, PC, taskMenu, addTaskMenu, reminderModal } from './plan.js?v=0.9.9';
-import { startNotify, pushOn, pushOff, pushTest, checkPush } from './notify.js?v=0.9.9';
+import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=1.0.0';
+import { MA, MC, mmAfter } from './mindmap.js?v=1.0.0';
+import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG, snapshot, listSnapshots, readSnapshot } from './store.js?v=1.0.0';
+import * as V from './views.js?v=1.0.0';
+import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=1.0.0';
+import { LA, LC, learningHub, langView, stopSpeech } from './lang.js?v=1.0.0';
+import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView, seriesView } from './book.js?v=1.0.0';
+import { warmContent } from './content.js?v=1.0.0';
+import { planView, PA, PC, taskMenu, addTaskMenu, reminderModal } from './plan.js?v=1.0.0';
+import { startNotify, pushOn, pushOff, pushTest, checkPush } from './notify.js?v=1.0.0';
 
 const $app = document.getElementById('app');
 const $layer = document.getElementById('layer');
@@ -26,6 +27,7 @@ const route = () => (location.hash.replace(/^#\/?/, '') || 'home');
 // RENDER
 function render() {
   document.documentElement.dataset.theme = store.state.theme || 'dark';
+  { const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = (store.state.theme || 'dark') === 'light' ? '#D7DFE5' : '#000000'; }
   if (!store.user) { leaveReader(); $app.innerHTML = V.login(ui.authMode, ui.authMsg, ui.authErr); $layer.innerHTML = ''; return; }
   const r = route();
   if (r.startsWith('read/')) { const id = r.slice(5); const same = R.id === id && document.querySelector('.reader'); mountReader(id, V.shell('read', ''), $app); if (same) syncHl(); renderLayer(); return; }
@@ -41,6 +43,7 @@ function render() {
   $app.innerHTML = V.shell(r, inner2);
   if (r !== lastRoute) { const v = document.getElementById('view'); if (v) v.classList.add('enter'); lastRoute = r; }
   if (base === 'book') bookAfter();
+  if (base === 'home') mmAfter();
   window.scrollTo(0, sy);
   renderLayer();
   const want = ui.wantFocus || fk;
@@ -284,7 +287,7 @@ const C = {
   }
 };
 
-Object.assign(A, RA, LA, BA, PA); Object.assign(C, RC, BC, PC, LC);
+Object.assign(A, RA, LA, BA, PA, MA); Object.assign(C, RC, BC, PC, LC, MC);
 window.addEventListener('mph:menu', e => { const { type, id, e: ev } = e.detail; openMenu(type, id, ev); });
 window.addEventListener('mph:closemenu', () => { ui.menu = null; renderLayer(); });
 window.addEventListener('mph:focus', e => { ui.wantFocus = e.detail; });

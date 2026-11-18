@@ -1,7 +1,7 @@
 // MPH study books. Rendered natively (no iframe) so bookmarks, resume and highlights are exact.
-import { esc, icon, uid } from './core.js?v=0.9.9';
-import { catalog, peek, progress, saveProgress } from './content.js?v=0.9.9';
-import { webHost, startHost } from './webrun.js?v=0.9.9';
+import { esc, icon, uid } from './core.js?v=1.0.0';
+import { catalog, peek, progress, saveProgress } from './content.js?v=1.0.0';
+import { webHost, startHost } from './webrun.js?v=1.0.0';
 
 const redraw = () => window.dispatchEvent(new Event('mph:redraw'));
 const toast = (t, undo) => window.dispatchEvent(new CustomEvent('mph:toast', { detail: { text: t, undo } }));

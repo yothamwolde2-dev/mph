@@ -1,11 +1,11 @@
 // MPH store: login, workspace state, undo and redo, saving and syncing with Supabase.
-import { uid, clone, DEFAULT_STATUSES, mkNode, mergeProg } from './core.js?v=0.9.9';
+import { uid, clone, DEFAULT_STATUSES, mkNode, mergeProg } from './core.js?v=1.0.0';
 
 export const CONFIG = {
   url: 'https://ibudcfsqsxjgxmngwrhk.supabase.co',
   key: 'sb_publishable_26qRWYPGawMiYPUPBsI1NA_HS2MuWOv',
   bucket: 'mph-files',
-  version: '0.9.9'
+  version: '1.0.0'
 };
 
 export const sb = window.supabase.createClient(CONFIG.url, CONFIG.key, {
@@ -27,7 +27,7 @@ export const WIDGETS = [
 export const blankState = () => ({
   v: 1,
   profile: { name: '', motto: '' },
-  theme: 'dark',
+  theme: 'light',
   home: { order: WIDGETS.map(w => w.id), hidden: [] },
   statuses: clone(DEFAULT_STATUSES),
   templates: [{ id: 'brand', name: 'Brand identity', items: BRAND_TEMPLATE.slice() }],

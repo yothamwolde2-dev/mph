@@ -1,10 +1,10 @@
 // MPH Plan: month focus, the week's Big 3, a to do list for the week, every day's plan, and a weekly review.
 // Built on a simple cascade: a few outcomes for the month, three goals that move them this week,
 // and each day's short list with up to three top priorities. Unfinished tasks stay on the day they were planned. Each day has its own summary.
-import { esc, icon, uid, today, addDays, parseD, dkey, fmtShort, isoWeek, weekKey, weekStart, weekRange, relDay, walk, locate, pathTo } from './core.js?v=0.9.9';
-import { store, mutate } from './store.js?v=0.9.9';
-import { occurrences, nextTime, fromLocal, REPEATS } from './remind.js?v=0.9.9';
-import { N, TZ, pushOn } from './notify.js?v=0.9.9';
+import { esc, icon, uid, today, addDays, parseD, dkey, fmtShort, isoWeek, weekKey, weekStart, weekRange, relDay, walk, locate, pathTo } from './core.js?v=1.0.0';
+import { store, mutate } from './store.js?v=1.0.0';
+import { occurrences, nextTime, fromLocal, REPEATS } from './remind.js?v=1.0.0';
+import { N, TZ, pushOn } from './notify.js?v=1.0.0';
 
 const S = () => store.state;
 const redraw = () => window.dispatchEvent(new Event('mph:redraw'));
@@ -39,7 +39,7 @@ export function dayItems(d) {
   return { tasks, rems, dues };
 }
 const weekList = w => S().tasks.filter(t => !t.d && (t.wk === w.wk || (!t.wk && PL.off === 0 && w.wk === weekKey())));
-// Unfinished tasks stay on the day they were planned (0.9.9): nothing is pulled forward into today.
+// Unfinished tasks stay on the day they were planned (1.0.0): nothing is pulled forward into today.
 const lateTasks = () => [];
 export const openToday = () => { const t = today(); const it = dayItems(t); return it.tasks.filter(x => !x.done).length + it.rems.filter(x => !x.done).length + it.dues.filter(x => !x.done).length + lateTasks().length; };
 
@@ -186,6 +186,27 @@ export function planView() {
   return `${head}${month}<div class="pl-top">${big3}${wlist}</div>${remindersPanel()}${board}${review}`;
 }
 
+const dkeyOf = ms => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+// A real clock: the hands turn with CSS from the current time, the words update every twenty seconds.
+const clockWords = d => {
+  const h = d.getHours(), mi = d.getMinutes(); const h12 = h % 12 || 12;
+  const day = d.getDate(); const th = day % 10 === 1 && day !== 11 ? 'st' : day % 10 === 2 && day !== 12 ? 'nd' : day % 10 === 3 && day !== 13 ? 'rd' : 'th';
+  return { time: `${h12}:${String(mi).padStart(2, '0')}<small>${h < 12 ? 'am' : 'pm'}</small>`, date: `${d.toLocaleDateString('en-GB', { weekday: 'short' })}, ${day}${th} ${d.toLocaleDateString('en-GB', { month: 'long' })}` };
+};
+function clock() {
+  const d = new Date(); const s = d.getSeconds() + d.getMilliseconds() / 1000; const m = d.getMinutes() * 60 + s; const h = (d.getHours() % 12) * 3600 + m;
+  let ticks = ''; for (let i = 0; i < 60; i++) { const a = i * 6 * Math.PI / 180; const big = i % 5 === 0; const r1 = big ? 40 : 43, r2 = 46;
+    ticks += `<line x1="${(50 + r1 * Math.sin(a)).toFixed(2)}" y1="${(50 - r1 * Math.cos(a)).toFixed(2)}" x2="${(50 + r2 * Math.sin(a)).toFixed(2)}" y2="${(50 - r2 * Math.cos(a)).toFixed(2)}" class="${big ? 'big' : ''}"/>`; }
+  const w = clockWords(d);
+  return `<div class="clk"><svg class="clk-face" viewBox="0 0 100 100" aria-hidden="true"><g class="clk-ticks">${ticks}</g>
+      <g class="clk-h" style="animation-delay:-${h.toFixed(1)}s"><path d="M50 52 L48.6 50 L50 25 L51.4 50 Z"/></g>
+      <g class="clk-m" style="animation-delay:-${m.toFixed(1)}s"><path d="M50 53 L49.1 50 L50 12 L50.9 50 Z"/></g>
+      <g class="clk-s" style="animation-delay:-${s.toFixed(2)}s"><line x1="50" y1="58" x2="50" y2="10"/></g>
+      <circle cx="50" cy="50" r="3.2" class="clk-pin"/></svg>
+    <div class="clk-w"><b class="clk-t">${w.time}</b><span class="clk-d">${esc(w.date)}</span></div></div>`;
+}
+setInterval(() => { const w = clockWords(new Date()); document.querySelectorAll('.clk-t').forEach(el => { el.innerHTML = w.time; }); document.querySelectorAll('.clk-d').forEach(el => { el.textContent = w.date; }); }, 20000);
+
 // HOME WIDGETS
 export const HW = {
   // Home: the reminders of the next seven days, nothing when there are none
@@ -201,21 +222,26 @@ export const HW = {
     return ptitle(`Today · ${n} open`, 'Open plan', '#/plan') + `<div class="pl-list" data-dropday="${t}">${rows || `<p class="empty">A clear day. Add what matters most, then star up to three.</p>`}</div>
       <div class="addline"><input class="field" data-k="home-today" data-enter="plAdd" data-d="${t}" placeholder="Add a task for today"><button class="btn" data-act="plAdd" data-d="${t}">Add</button></div>`;
   },
+  // The glass calendar (1.0): a live clock card, then the month on a frosted sheet.
   calendar() {
     const now = new Date(); const first = new Date(now.getFullYear(), now.getMonth() + PL.cal, 1);
     const y = first.getFullYear(), m = first.getMonth(); const t = today();
-    const lead = (first.getDay() + 6) % 7; const daysIn = new Date(y, m + 1, 0).getDate();
+    const lead = (first.getDay() + 6) % 7; const daysIn = new Date(y, m + 1, 0).getDate(); const prevIn = new Date(y, m, 0).getDate();
     const busy = {};
     S().tasks.forEach(x => { if (x.d && !x.done) busy[x.d] = (busy[x.d] || 0) + 1; });
     walk(S().areas, n => { if (n.due && n.st !== 'Done') busy[n.due] = (busy[n.due] || 0) + 1; (n.r || []).forEach(r => { if (!r.done) busy[r.d] = (busy[r.d] || 0) + 1; }); });
-    let cells = ''; for (let i = 0; i < lead; i++) cells += '<span></span>';
+    (S().reminders || []).forEach(r => { if (!r.done && !r.rep) { const k = dkeyOf(r.at); busy[k] = (busy[k] || 0) + 1; } });
+    let cells = '';
+    for (let i = lead; i > 0; i--) cells += `<span class="cal-d out">${prevIn - i + 1}</span>`;
     for (let d = 1; d <= daysIn; d++) {
       const k = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      cells += `<button class="cal-d ${k === t ? 'today' : ''} ${k < t ? 'past' : ''}" data-act="plGoDay" data-d="${k}" aria-label="${esc(fmtShort(k))}${busy[k] ? ', ' + busy[k] + ' planned' : ''}"><span>${d}</span>${busy[k] ? `<i class="${busy[k] > 2 ? 'many' : ''}"></i>` : ''}</button>`;
+      cells += `<button class="cal-d ${k === t ? 'today' : ''} ${k < t ? 'past' : ''} ${PL.day === k && k !== t ? 'sel' : ''}" data-act="plGoDay" data-d="${k}" aria-label="${esc(fmtShort(k))}${busy[k] ? ', ' + busy[k] + ' planned' : ''}"><span>${d}</span>${busy[k] ? `<i class="${busy[k] > 2 ? 'many' : ''}"></i>` : ''}</button>`;
     }
-    return `<div class="ptitle"><i class="tick"></i><span class="eyebrow">${MONTHS[m]} ${y}</span><span class="sp"></span>
-      <button class="iconbtn sm" data-act="plCal" data-d="-1" aria-label="Previous month">${icon('left', 14)}</button>${PL.cal ? `<button class="link" data-act="plCal" data-d="0">Today</button>` : ''}<button class="iconbtn sm" data-act="plCal" data-d="1" aria-label="Next month">${icon('chev', 14)}</button></div>
-      <div class="cal"><div class="cal-h">${DAYN.map(d => `<span>${d.slice(0, 1)}</span>`).join('')}</div><div class="cal-g">${cells}</div></div>`;
+    const tail = (7 - (lead + daysIn) % 7) % 7; for (let d = 1; d <= tail; d++) cells += `<span class="cal-d out">${d}</span>`;
+    return `${clock()}
+      <div class="cal-top"><b>${MONTHS[m]} ${y}</b><span class="sp"></span>${PL.cal ? `<button class="link" data-act="plCal" data-d="0">Today</button>` : ''}
+        <button class="cal-nav" data-act="plCal" data-d="-1" aria-label="Previous month">${icon('left', 16)}</button><button class="cal-nav" data-act="plCal" data-d="1" aria-label="Next month">${icon('chev', 16)}</button></div>
+      <div class="cal"><div class="cal-h">${DAYN.map(d => `<span>${d}</span>`).join('')}</div><div class="cal-g">${cells}</div></div>`;
   },
   notes() {
     const ns = S().notes || [];

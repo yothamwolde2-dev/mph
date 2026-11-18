@@ -1,7 +1,7 @@
 // MPH private content: courses and books that Yotham sends to Claude.
 // Files in /content are locked (AES-256-GCM). The key is read once from Yotham's private
 // Supabase table after sign in, then kept on the device so everything opens offline.
-import { sb, store, readDocState, saveDocState, CONFIG } from './store.js?v=0.9.9';
+import { sb, store, readDocState, saveDocState, CONFIG } from './store.js?v=1.0.0';
 
 const mem = new Map();
 let keyPromise = null;
@@ -53,6 +53,8 @@ export function peek(name, v = 1, onReady) {
     .finally(() => { pending.delete(id); onReady && onReady(); });
   return null;
 }
+// Any locked file by name, for one off data such as the plan map.
+export const unlockData = (name, v = 1) => unlock(name, v);
 export const catalog = onReady => peek('index', CONFIG.version, onReady);
 
 // After sign in, fetch everything once so it is all on the device for offline use.

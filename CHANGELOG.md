@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.0, 18 November 2026
+
+* A new look, Glass: frosted white panels on a soft blue grey field, rounded forms, sentence case headings in Montserrat, and a floating sidebar with the Mansen wordmark. The Black theme is still in Settings, Appearance.
+* Home, redesigned: a black greeting card with your date, a line about your day and quick buttons, four figures (open for today, done this week, projects moving, reminders this week), the mind map, then Today, Projects pulse, the calendar and reminders.
+* Mind map on Home: your goal in the centre, every project topic a coloured branch, every item a leaf. It is the same tree as Projects, so anything you add, rename, recolour or delete on the map is in Projects, and the other way round. Select any branch to edit it, set its status, add items under it, go deeper, or open it in Projects. Bring in your plan map with one tap: Branding studio, Smart City, Arada Mall, Company tools and Learning, with their workstreams and work packages.
+* Calendar: a live clock card, then the month on a frosted sheet with today in black and green dots for busy days.
+
 ## 0.9.9, 10 November 2026
 
 * Plan: unfinished tasks now stay on the day they were planned. They are no longer pulled into today, on the Plan page or on Home.

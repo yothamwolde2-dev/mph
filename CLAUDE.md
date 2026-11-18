@@ -44,7 +44,9 @@ A personal app for Yotham, used on an M1 Mac and an iPhone. It brings projects, 
 
 * Every change to the workspace goes through `mutate(fn, key)` so it can be undone. Use `touch(fn)` only for things that should not be undoable (for example "last opened").
 * Click actions use `data-act="name"` and live in `A`; field changes use `data-chg="name"` and live in `C`; Enter in a field uses `data-enter="name"`.
-* Home (since 0.9.5) is deliberately minimal: the greeting hero (`h-hero`, name from the profile, default Yotham), then reminders for the next seven days (`HW.reminders()`, hidden when empty), the projects pulse and the calendar. Do not add more to it without Yotham asking. `WIDGETS` and `W` remain for the old widgets.
+* Home (since 1.0, laid out like Yotham's Mansen Workspace mockup): the black greeting card (`h-hero g`, name and motto from the profile), four figure tiles (`h-tiles`), the mind map card (`mindmapCard()`), then Today and Projects pulse beside the glass calendar and the week's reminders. Do not add more without Yotham asking. `WIDGETS` and `W` remain for the old widgets.
+* Mind map (`js/mindmap.js`): a radial picture of `state.areas` (centre `state.mapGoal`, branches are topics with colour `a.c`, leaves are their items). It has no data of its own, so it and Projects are always the same tree. Branch pills are placed on three rings by box collision; colours without `a.c` take unused palette colours. Its actions (`MA`, `MC`) are merged into `A` and `C`. `mmAfter()` centres the canvas on phones. The plan map Yotham sent (mansen-plan-map.html: goal, five departments, workstreams, work packages, milestones) is locked as `content/planmap.bin` and merged into Projects by the Bring in your plan map button (`state.mapSeed` set once done).
+* Calendar (`HW.calendar` in plan.js): a CSS driven analog clock (`clock()`, hands turn from negative animation delays, words refresh every 20 seconds) above the month.
 * The item drawer is a history step (`drPush()`), so Back and the phone's back gesture close it.
 * New screens: add a view function, a route in `render()` and an entry in `NAV` (and `TABS` for the iPhone tab bar, five at most). The top bar Back button (`goBack`) returns to the previous screen and falls back to `parentOf()`; extend `parentOf()` for nested routes.
 * Never use a minus sign or dash as an icon for delete; use `trash`.
@@ -76,6 +78,8 @@ Afaan Oromo sound: no phone or Mac has an Oromo voice, so the build makes mp3 cl
 Languages: Chinese has HSK 2 and HSK 3 open, HSK 4 and HSK 5 locked (open them when Yotham finishes HSK 3 and sends material). German A1 open (A2, B1 locked), Afaan Oromo Level 1 open (Level 2 locked), both written as text files `de_a1_*.txt`, `om_l1_*.txt` and built by `textlevel()`. A language's `ui` in the index sets labels, voice and `noaudio` (Afaan Oromo has no device voice).
 
 ## Design rules (from Yotham, always apply)
+
+* Since 1.0 the light theme is Glass (the default): frosted translucent panels (`backdrop-filter`, white edge, soft shadow) on a soft blue grey gradient, radius 22 to 30 px, pill buttons, sentence case headings in Montserrat 800 with tight tracking, a floating glass sidebar with the Mansen wordmark (`logo()` in views.js) as its largest element. All of it is in the `@layer glass` block at the end of app.css, scoped to `[data-theme="light"]` where it changes the base look. Black theme stays as before.
 
 * Mansen visual identity: Jet Black `#000000` dominant, Dark Green `#39B44A` as accent only, White, Dark Grey `#333333`, Light Grey `#E6E6E6`. Deep green `#1B6E27` for the gradient end and almost done.
 * Headings: Power Grotesk when installed on the device, otherwise Montserrat 800 to 900, uppercase, tight tracking. Body: Montserrat.
