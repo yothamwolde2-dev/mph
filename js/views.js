@@ -1,16 +1,14 @@
 // MPH views. Each returns markup; app.js wires the actions.
-import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=1.0.0';
-import { store, WIDGETS, CONFIG } from './store.js?v=1.0.0';
-import { homeLearning } from './lang.js?v=1.0.0';
-import { homeBooks } from './book.js?v=1.0.0';
-import { N } from './notify.js?v=1.0.0';
-import { HW, openToday, nodeInPlan, upcoming } from './plan.js?v=1.0.0';
-import { mindmapCard } from './mindmap.js?v=1.0.0';
+import { esc, icon, today, addDays, relDay, fmtShort, fmtLong, isoWeek, weekKey, weekStart, weekRange, ago, kb, greeting, walk, pathTo, progress, areaProgress, statusCounts, leaves } from './core.js?v=1.0.1';
+import { store, WIDGETS, CONFIG } from './store.js?v=1.0.1';
+import { homeLearning } from './lang.js?v=1.0.1';
+import { homeBooks } from './book.js?v=1.0.1';
+import { N } from './notify.js?v=1.0.1';
+import { HW, openToday, nodeInPlan, upcoming } from './plan.js?v=1.0.1';
+import { mindmapCard } from './mindmap.js?v=1.0.1';
 
-// The Mansen wordmark, black (white on the black theme) with the green accent stroke.
-const LOGO_W = 'M25.863 0.050L25.863 20.019L21.624 20.019L21.782 4.419L14.790 20.019L11.041 20.019L4.106 4.419L4.265 20.019L0.026 20.019L0.026 0.050L6.254 0.050L13.002 14.987L19.677 0.050L25.863 0.050M37.555 11.714L40.684 4.145L43.755 11.714L37.555 11.714M43.294 0.050L38.175 0.050L29.280 20.019L34.138 20.019L36.171 15.160L45.139 15.160L47.201 20.019L52.190 20.019L43.294 0.050M142.474 0.050L142.474 20.019L137.558 20.019L126.038 5.586L126.038 20.019L121.713 20.019L121.713 0.050L126.716 0.050L138.149 14.482L138.149 0.050L142.474 0.050M97.966 13.805C97.966 16.039 96.928 17.712 94.895 18.779C92.934 19.802 90.541 20.019 88.869 20.019C85.639 20.019 83.188 19.399 81.573 18.188C80.088 17.063 79.324 15.419 79.281 13.314L79.266 13.141L83.837 13.141L83.837 13.314C83.967 16.155 86.720 16.760 88.998 16.760C90.325 16.760 93.396 16.501 93.396 14.208C93.396 12.334 90.887 11.988 87.989 11.584C84.111 11.036 79.713 10.416 79.713 5.976C79.713 3.957 80.550 2.415 82.208 1.391C83.621 0.526 85.653 0.050 88.090 0.050C93.756 0.050 96.957 2.155 97.346 6.120L97.361 6.307L92.790 6.307L92.776 6.149C92.661 4.779 91.406 3.323 88.277 3.323C86.389 3.323 84.125 3.741 84.125 5.702C84.125 7.418 86.562 7.706 89.373 8.052C93.208 8.513 97.966 9.090 97.966 13.805M118.757 16.573L118.757 20.019L101.153 20.019L101.153 0.050L118.541 0.050L118.541 3.496L105.651 3.496L105.651 8.066L118.022 8.066L118.022 11.512L105.651 11.512L105.651 16.573L118.757 16.573M76.109 14.684L76.109 20.019L71.192 20.019L71.149 19.947L59.672 5.586L59.672 20.019L55.347 20.019L55.347 0.050L60.350 0.050L60.408 0.122L71.942 14.684L76.109 14.684';
-const LOGO_A = 'M76.109 0.050L76.109 11.570L72.375 11.570L72.302 3.510L66.305 3.467L63.464 0.050L76.109 0.050';
-export const logo = (cls = 'logo') => `<svg class="${cls}" viewBox="0 0 142.5 20" role="img" aria-label="Mansen"><path class="lw" fill-rule="evenodd" d="${LOGO_W}"/><path fill="#39B44A" d="${LOGO_A}"/></svg>`;
+// The MPH wordmark: heavy letters with the green square.
+export const logo = (cls = 'wm') => `<span class="${cls}"><b>MPH</b><i></i></span>`;
 
 export const NAV = [
   { group: 'Work', items: [

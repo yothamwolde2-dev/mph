@@ -1,10 +1,10 @@
 // MPH Plan: month focus, the week's Big 3, a to do list for the week, every day's plan, and a weekly review.
 // Built on a simple cascade: a few outcomes for the month, three goals that move them this week,
 // and each day's short list with up to three top priorities. Unfinished tasks stay on the day they were planned. Each day has its own summary.
-import { esc, icon, uid, today, addDays, parseD, dkey, fmtShort, isoWeek, weekKey, weekStart, weekRange, relDay, walk, locate, pathTo } from './core.js?v=1.0.0';
-import { store, mutate } from './store.js?v=1.0.0';
-import { occurrences, nextTime, fromLocal, REPEATS } from './remind.js?v=1.0.0';
-import { N, TZ, pushOn } from './notify.js?v=1.0.0';
+import { esc, icon, uid, today, addDays, parseD, dkey, fmtShort, isoWeek, weekKey, weekStart, weekRange, relDay, walk, locate, pathTo } from './core.js?v=1.0.1';
+import { store, mutate } from './store.js?v=1.0.1';
+import { occurrences, nextTime, fromLocal, REPEATS } from './remind.js?v=1.0.1';
+import { N, TZ, pushOn } from './notify.js?v=1.0.1';
 
 const S = () => store.state;
 const redraw = () => window.dispatchEvent(new Event('mph:redraw'));
@@ -39,7 +39,7 @@ export function dayItems(d) {
   return { tasks, rems, dues };
 }
 const weekList = w => S().tasks.filter(t => !t.d && (t.wk === w.wk || (!t.wk && PL.off === 0 && w.wk === weekKey())));
-// Unfinished tasks stay on the day they were planned (1.0.0): nothing is pulled forward into today.
+// Unfinished tasks stay on the day they were planned (1.0.1): nothing is pulled forward into today.
 const lateTasks = () => [];
 export const openToday = () => { const t = today(); const it = dayItems(t); return it.tasks.filter(x => !x.done).length + it.rems.filter(x => !x.done).length + it.dues.filter(x => !x.done).length + lateTasks().length; };
 
@@ -50,7 +50,7 @@ function taskRow(t, opts = {}) {
   return `<div class="pl-task ${t.done ? 'done' : ''} ${t.star ? 'star' : ''}" draggable="true" data-task="${t.id}">
     <button class="check ${t.done ? 'on' : ''}" data-act="plToggle" data-id="${t.id}" aria-label="${t.done ? 'Mark not done' : 'Mark done'}">${t.done ? icon('check', 13) : ''}</button>
     <div class="grow">${PL.edit === t.id ? `<input class="inline pl-x" data-k="edit-${t.id}" data-chg="plEdit" data-enter="plEditDone" data-id="${t.id}" value="${esc(t.x)}" aria-label="Task">` : `<span class="pl-t" data-act="plEditStart" data-id="${t.id}">${esc(t.x)}</span>`}${meta ? `<small>${esc(meta)}</small>` : ''}</div>
-    <button class="pl-star ${t.star ? 'on' : ''}" data-act="plStar" data-id="${t.id}" aria-label="${t.star ? 'Remove from top priorities' : 'Make a top priority'}" title="Top priority">${icon('star', 14)}</button>
+    <button class="pl-star ${t.star ? 'on' : ''}" data-act="plStar" data-id="${t.id}" aria-label="${t.star ? 'Remove from top priorities' : 'Make a top priority'}" title="Top priority"><i class="gem"></i></button>
     <button class="iconbtn pl-more" data-act="plMenu" data-id="${t.id}" aria-label="Move or delete">${icon('dots', 15)}</button>
   </div>`;
 }

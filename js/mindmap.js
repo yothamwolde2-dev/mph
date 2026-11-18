@@ -1,16 +1,16 @@
-// MPH mind map (1.0). The map is a picture of Projects: the centre is the big goal, every topic is a branch,
-// every item in a topic is a leaf. Editing the map edits Projects and editing Projects redraws the map,
+// MPH mind map (1.0.1). The map is a picture of Projects: the centre circle opens into the topics, each topic opens
+// into its items, and so on, like a work breakdown structure. Editing the map edits Projects and editing Projects redraws the map,
 // because both read and write the same tree (store.state.areas). Selecting a branch opens its panel,
 // where you rename it, change its status, add items under it, or go deeper.
-import { esc, icon, mkNode, locate, pathTo, leaves, areaProgress, progress } from './core.js?v=1.0.0';
-import { store, mutate } from './store.js?v=1.0.0';
-import { unlockData } from './content.js?v=1.0.0';
+import { esc, icon, mkNode, locate, pathTo, leaves, areaProgress, progress } from './core.js?v=1.0.1';
+import { store, mutate } from './store.js?v=1.0.1';
+import { unlockData } from './content.js?v=1.0.1';
 
 const S = () => store.state;
 const redraw = () => window.dispatchEvent(new Event('mph:redraw'));
 const toast = (t, undo) => window.dispatchEvent(new CustomEvent('mph:toast', { detail: { text: t, undo } }));
 export const PAL = ['#39B44A', '#2F6BFF', '#D6457A', '#C98A12', '#0F9488', '#7B5CE0', '#E0603A', '#5B6B7C'];
-const MM = { sel: 'goal' };
+const MM = { sel: 'goal', open: new Set(), shown: new Set(), fresh: new Set(), root: null };
 // Each branch keeps its chosen colour; branches without one take the palette colours nobody uses yet.
 let CMAP = new Map();
 function paint(areas) { CMAP = new Map(); const used = new Set(areas.map(a => a.c).filter(Boolean)); const free = PAL.filter(c => !used.has(c)); let j = 0;
@@ -19,70 +19,72 @@ const colorOf = a => CMAP.get(a.id) || a.c || PAL[0];
 const cut = (t, n) => { t = String(t || '').trim(); return t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t; };
 const GOAL0 = 'Set the one goal that every project serves';
 
-// geometry
-const W = 1260, CX = 630, CY = 630, RC = 100, RINGS = [212, 262, 312], R2 = 418;
-const rad = a => a * Math.PI / 180;
-const pt = (a, r) => [CX + r * Math.cos(rad(a)), CY + r * Math.sin(rad(a))];
-const f = p => p[0].toFixed(1) + ' ' + p[1].toFixed(1);
-function curve(a0, r0, a1, r1, tw) {
-  const d = r1 - r0;
-  return `M${f(pt(a0, r0))} C${f(pt(a0 + tw, r0 + d * .5))} ${f(pt(a1 - tw, r1 - d * .35))} ${f(pt(a1, r1))}`;
-}
-function wrap(text, max, lines) {
-  const words = String(text).split(/\s+/); const out = []; let cur = '';
-  for (const w of words) { if ((cur + ' ' + w).trim().length > max && cur) { out.push(cur); cur = w; } else cur = (cur + ' ' + w).trim(); }
-  if (cur) out.push(cur);
-  if (out.length > lines) { out.length = lines; out[lines - 1] = cut(out[lines - 1] + ' …', max); }
-  return out;
-}
+// LAYOUT (1.0.1): a work breakdown tree that grows out of the centre circle, one level per click.
+// Closed, the map is only the circle. Open it and the branches spread left and right; open a branch and its
+// items appear further out, and so on to any depth. MM.open holds what is open (screen state, not data).
+const RR = 62, GAP = 64, STEP = 236, ROW = 50;
+const pillW = (t, d) => Math.min(d === 1 ? 210 : 200, Math.round(cut(t, d === 1 ? 18 : 22).length * (d === 1 ? 8.7 : 7.7) + (d === 1 ? 44 : 50)));
+const kidsOf = n => (n.k || []);
+const isOpen = id => MM.open.has(id);
+function hOf(n) { const k = kidsOf(n); return isOpen(n.id) && k.length ? Math.max(ROW, k.reduce((x, c) => x + hOf(c), 0)) : ROW; }
 
 function svg() {
   const st = S(); const areas = st.areas; const sts = st.statuses; paint(areas);
-  const stc = k => (sts.find(s => s.key === k) || {}).color;
-  const selPath = MM.sel === 'goal' ? [] : (pathTo(areas, MM.sel) || []);
-  const selTop = selPath[0] ? selPath[0].id : null;
-  const wts = areas.map(a => Math.max(2, (a.k || []).length)); const total = wts.reduce((x, y) => x + y, 0) || 1;
-  let ang = -90 - (360 * wts[0] / total) / 2;
+  const stc = k => (sts.find(s => s.key === k) || {}).color || '#8A8A8A';
+  const rootOpen = MM.open.has('root');
+  const nodes = []; const links = [];
+  if (rootOpen && areas.length) {
+    // split the branches into a right and a left side of about equal height
+    const hs = areas.map(hOf); const total = hs.reduce((x, y) => x + y, 0);
+    let acc = 0; const right = [], left = [];
+    areas.forEach((a, i) => { if (acc < total / 2 || !right.length) { right.push(a); acc += hs[i]; } else left.push(a); });
+    const place = (list, dir) => {
+      const H = list.reduce((x, a) => x + hOf(a), 0); let y = -H / 2;
+      const walk = (n, depth, top, c, parent) => {
+        const h = hOf(n); const cy = top + h / 2; const w = pillW(n.t, depth);
+        const x0 = dir > 0 ? RR + GAP + (depth - 1) * STEP : -(RR + GAP + (depth - 1) * STEP) - w;
+        const node = { n, depth, c, dir, x: x0, y: cy, w, h: depth === 1 ? 42 : 36 };
+        nodes.push(node);
+        if (parent) links.push({ a: parent, b: node, c });
+        else links.push({ a: null, b: node, c });
+        if (isOpen(n.id)) { let t = top; kidsOf(n).forEach(k => { walk(k, depth + 1, t, c, node); t += hOf(k); }); }
+      };
+      list.forEach(a => { walk(a, 1, y, colorOf(a), null); y += hOf(a); });
+    };
+    place(right, 1); place(left, -1);
+  }
+  // bounds
+  let minX = -RR - 30, maxX = RR + 30, minY = -RR - 40, maxY = RR + 60;
+  nodes.forEach(o => { minX = Math.min(minX, o.x - 40); maxX = Math.max(maxX, o.x + o.w + 40); minY = Math.min(minY, o.y - 30); maxY = Math.max(maxY, o.y + 30); });
+  const PAD = 30; const W = Math.ceil(maxX - minX + PAD * 2), H = Math.ceil(maxY - minY + PAD * 2);
+  const ox = PAD - minX, oy = PAD - minY; MM.root = { x: ox, y: oy, W, H };
+  const X = v => (v + ox).toFixed(1), Y = v => (v + oy).toFixed(1);
+  const selPath = MM.sel === 'goal' ? [] : (pathTo(areas, MM.sel) || []).map(x => x.id);
+  MM.fresh = new Set(nodes.filter(o => !MM.shown.has(o.n.id)).map(o => o.n.id));
   let s = '';
-  const geo = areas.map((a, i) => { const span = 360 * wts[i] / total; const g = { a0: ang, span, am: ang + span / 2 }; ang += span; return g; });
-  // branch pills: each tries three rings and takes the first place where it touches no other pill
-  const placed = [];
-  const box = (g, r) => { const c = pt(g.am, r); return { x1: c[0] - g.w / 2 - 8, x2: c[0] + g.w / 2 + 8, y1: c[1] - 31, y2: c[1] + 31 }; };
-  const over = (a, b) => Math.max(0, Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1)) * Math.max(0, Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1));
-  geo.forEach((g, i) => { g.label = cut(areas[i].t, 15); g.w = Math.round(g.label.length * 11.4 + 44);
-    let best = null; for (const r of RINGS) { const bx = box(g, r); const o = placed.reduce((x, p) => x + over(bx, p), 0); if (!best || o < best.o) best = { r, o, bx }; if (!o) break; }
-    g.r = best.r; placed.push(best.bx); });
-  // the coloured ring around the goal
-  areas.forEach((a, i) => { const g = geo[i]; const gap = Math.min(1.6, g.span / 6); const p1 = pt(g.a0 + gap, RC + 16), p2 = pt(g.a0 + g.span - gap, RC + 16);
-    s += `<path class="mm-ring ${selTop && selTop !== a.id ? 'dim' : ''}" d="M${f(p1)} A${RC + 16} ${RC + 16} 0 ${g.span - 2 * gap > 180 ? 1 : 0} 1 ${f(p2)}" stroke="${colorOf(a, i)}" stroke-width="7" fill="none" stroke-linecap="round"/>`; });
-  areas.forEach((a, i) => {
-    const g = geo[i]; const c = colorOf(a, i); const kids = a.k || [];
-    const p = pt(g.am, g.r); const label = g.label; const w = g.w;
-    let paths = `<path d="${curve(g.am, RC + 26, g.am, g.r - 22, 8)}" stroke="${c}" stroke-width="4.5" fill="none" stroke-linecap="round"/>`;
-    let nodes = '';
-    kids.forEach((n, j) => {
-      const a2 = g.a0 + g.span * (j + .5) / kids.length; const q = pt(a2, R2);
-      const right = Math.cos(rad(a2)) >= 0; const rot = right ? a2 : a2 + 180;
-      const lp = pt(a2, R2 + 19); const on = MM.sel === n.id || selPath.some(x => x.id === n.id);
-      const done = n.st === 'Done'; const sc = stc(n.st);
-      const more = (n.k || []).length;
-      paths += `<path d="${curve(g.am, g.r + 22, a2, R2 - 10, 0)}" stroke="${c}" stroke-width="2.2" fill="none" stroke-linecap="round" opacity=".7"/>`;
-      nodes += `<g class="mm-l2 ${on ? 'on' : ''} ${done ? 'done' : ''}" tabindex="0" role="button" data-act="mmSel" data-id="${n.id}" aria-label="${esc(a.t + ', ' + n.t)}" style="--c:${c}">
-        <circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="18" fill="transparent"/>
-        <circle class="dot" cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="10"/>
-        ${sc && n.st !== 'Next' ? `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="4" fill="${sc}"/>` : ''}
-        <text transform="translate(${f(lp)}) rotate(${rot.toFixed(1)})" text-anchor="${right ? 'start' : 'end'}" dy="7">${esc(cut(n.t, 15))}${more ? `<tspan class="mm-n" dx="6">${more}</tspan>` : ''}</text></g>`;
-    });
-    s += `<g class="mm-dept ${selTop && selTop !== a.id ? 'dim' : ''}" style="--c:${c}">${paths}
-      <g class="mm-l1 ${MM.sel === a.id ? 'on' : ''}" tabindex="0" role="button" data-act="mmSel" data-id="${a.id}" aria-label="${esc(a.t)}">
-        <rect class="shape" x="${(p[0] - w / 2).toFixed(1)}" y="${(p[1] - 26).toFixed(1)}" width="${w}" height="52" rx="26" fill="${c}"/>
-        <text x="${p[0].toFixed(1)}" y="${(p[1] + 7).toFixed(1)}">${esc(label)}</text></g>${nodes}</g>`;
+  links.forEach(({ a, b, c }) => {
+    let x1, y1; const x2 = b.dir > 0 ? b.x : b.x + b.w, y2 = b.y;
+    if (!a) { const ang = Math.atan2(b.y, b.dir * (RR + GAP)); x1 = b.dir * RR * Math.cos(Math.abs(ang)) * 0.98; y1 = RR * Math.sin(ang) * 0.98; }
+    else { x1 = a.dir > 0 ? a.x + a.w : a.x; y1 = a.y; }
+    const m = (x1 + x2) / 2; const on = selPath.includes(b.n.id);
+    s += `<path class="mm-link ${MM.fresh.has(b.n.id) ? 'in' : ''} ${on ? 'on' : ''}" d="M${X(x1)} ${Y(y1)} C${X(m)} ${Y(y1)} ${X(m)} ${Y(y2)} ${X(x2)} ${Y(y2)}" stroke="${c}" stroke-width="${b.depth === 1 ? 3.2 : 2}" fill="none" stroke-linecap="round"/>`;
   });
-  const lines = wrap(st.mapGoal || GOAL0, 12, 4); const y0 = CY - (lines.length - 1) * 13;
-  s += `<g class="mm-core ${MM.sel === 'goal' ? 'on' : ''}" tabindex="0" role="button" data-act="mmSel" data-id="goal" aria-label="The big goal">
-    <circle class="glow" cx="${CX}" cy="${CY}" r="${RC + 4}"/><circle class="shape" cx="${CX}" cy="${CY}" r="${RC}"/>
-    ${lines.map((l, i) => `<text x="${CX}" y="${y0 + i * 26 + 7}">${esc(l)}</text>`).join('')}</g>`;
-  return `<svg class="mm-svg" viewBox="0 0 ${W} ${W}" role="group" aria-label="Mind map of your projects">${s}</svg>`;
+  nodes.forEach(o => {
+    const { n, depth, c, dir } = o; const k = kidsOf(n).length; const open = isOpen(n.id);
+    const sel = MM.sel === n.id; const done = n.st === 'Done';
+    const lx = o.x, ty = o.y - o.h / 2; const label = cut(n.t, depth === 1 ? 18 : 22);
+    const badgeX = dir > 0 ? lx + o.w + 15 : lx - 15;
+    const badge = k ? `<g class="mm-badge ${open ? 'open' : ''}"><circle cx="${X(badgeX)}" cy="${Y(o.y)}" r="11"/><text x="${X(badgeX)}" y="${Y(o.y + 4)}">${open ? '' : k}</text></g>` : '';
+    const body = depth === 1
+      ? `<rect class="shape" x="${X(lx)}" y="${Y(ty)}" width="${o.w}" height="${o.h}" rx="${o.h / 2}" fill="${c}"/><text class="t1" x="${X(lx + o.w / 2)}" y="${Y(o.y + 5)}">${esc(label)}</text>`
+      : `<rect class="shape" x="${X(lx)}" y="${Y(ty)}" width="${o.w}" height="${o.h}" rx="${o.h / 2}"/><circle cx="${X(lx + 17)}" cy="${Y(o.y)}" r="4.5" fill="${stc(n.st)}"/><text class="t2" x="${X(lx + 30)}" y="${Y(o.y + 4.6)}">${esc(label)}</text>`;
+    s += `<g class="mm-node d${Math.min(depth, 3)} ${sel ? 'on' : ''} ${done ? 'done' : ''} ${MM.fresh.has(n.id) ? 'in' : ''}" style="--c:${c};--dx:${dir * -14}px" tabindex="0" role="button" data-act="mmSel" data-id="${n.id}" aria-expanded="${k ? open : ''}" aria-label="${esc(n.t)}${k ? ', ' + k + ' under it' : ''}">${body}${badge}</g>`;
+  });
+  s += `<g class="mm-core ${MM.sel === 'goal' ? 'on' : ''} ${rootOpen ? 'open' : 'shut'}" tabindex="0" role="button" data-act="mmSel" data-id="goal" aria-expanded="${rootOpen}" aria-label="Mind map, ${areas.length} branches">
+    <circle class="pulse" cx="${ox}" cy="${oy}" r="${RR + 6}"/><circle class="glow" cx="${ox}" cy="${oy}" r="${RR + 5}"/><circle class="shape" cx="${ox}" cy="${oy}" r="${RR}"/>
+    <text class="c1" x="${ox}" y="${oy + 2}">Mind map</text><text class="c2" x="${ox}" y="${oy + 22}">${rootOpen ? areas.length + ' branches' : 'Tap to open'}</text></g>`;
+  MM.shown = new Set(nodes.map(o => o.n.id));
+  return `<svg class="mm-svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="group" aria-label="Mind map of your projects">${s}</svg>`;
 }
 
 function panel() {
@@ -116,7 +118,7 @@ function panel() {
 export function mindmapCard() {
   const n = S().areas.length; const items = S().areas.reduce((x, a) => x + (a.k || []).flatMap(leaves).length, 0);
   return `<section class="panel mm" aria-label="Mind map">
-    <div class="ptitle"><span class="h2">Mind map</span><span class="faint mm-sub">${n} branches · ${items} items · the same tree as Projects</span><span class="sp"></span><a class="link" href="#/projects">Open projects</a></div>
+    <div class="ptitle"><span class="h2">Mind map</span><span class="faint mm-sub">${n} branches · ${items} items · the same tree as Projects</span><span class="sp"></span>${MM.open.size ? `<button class="link" data-act="mmFold">Close all</button>` : ''}<button class="link" data-act="mmAll">Open all</button></div>
     <div class="mm-wrap"><div class="mm-canvas">${svg()}</div><aside class="mm-panel">${panel()}</aside></div></section>`;
 }
 
@@ -147,7 +149,19 @@ async function seed() {
 }
 
 export const MA = {
-  mmSel(el) { MM.sel = el.dataset.id; redraw(); },
+  mmSel(el) {
+    const id = el.dataset.id;
+    if (id === 'goal') { if (MM.sel === 'goal' && MM.open.has('root')) MM.open.delete('root'); else MM.open.add('root'); MM.sel = 'goal'; redraw(); return; }
+    const path = pathTo(S().areas, id); if (!path) return; const n = path[path.length - 1];
+    MM.open.add('root'); path.slice(0, -1).forEach(x => MM.open.add(x.id));
+    if ((n.k || []).length) {
+      if (MM.sel === id && MM.open.has(id)) MM.open.delete(id);
+      else { const sibs = path.length > 1 ? path[path.length - 2].k : S().areas; sibs.forEach(x => { if (x.id !== id) MM.open.delete(x.id); }); MM.open.add(id); }
+    }
+    MM.sel = id; MM.focus = id; redraw();
+  },
+  mmAll() { MM.open.add('root'); const w = a => a.forEach(n => { if ((n.k || []).length) { MM.open.add(n.id); w(n.k); } }); w(S().areas); redraw(); },
+  mmFold() { MM.open = new Set(); MM.sel = 'goal'; SX = null; SY = null; redraw(); },
   mmAddTopic(el) {
     const inp = el.tagName === 'INPUT' ? el : document.querySelector('[data-k="mm-topic"]'); const x = inp.value.trim(); if (!x) return;
     const n = mkNode(x, ''); window.dispatchEvent(new CustomEvent('mph:focus', { detail: 'mm-topic' }));
@@ -170,13 +184,21 @@ export const MC = {
   mmGoal(el) { mutate(s => { s.mapGoal = el.value.trim(); }, 'mmgoal'); }
 };
 // keyboard: Enter or Space on a node selects it
-document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('.mm-svg [data-act="mmSel"]')) { e.preventDefault(); MM.sel = e.target.dataset.id; redraw(); } });
+document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('.mm-svg [data-act="mmSel"]')) { e.preventDefault(); MA.mmSel(e.target); } });
 
-// After each render: open the map centred on phones, and keep where you scrolled it while you edit.
-let SX = null;
+// After each render: keep the circle in view the first time, then keep where you scrolled while you open and edit.
+let SX = null, SY = null;
 export function mmAfter() {
-  const c = document.querySelector('.mm-canvas'); if (!c) return;
-  const max = c.scrollWidth - c.clientWidth; if (max <= 0) return;
-  c.scrollLeft = SX === null ? max / 2 : Math.min(SX, max);
-  c.addEventListener('scroll', () => { SX = c.scrollLeft; }, { passive: true });
+  const c = document.querySelector('.mm-canvas'); if (!c || !MM.root) return;
+  if (SX === null) { c.scrollLeft = Math.max(0, MM.root.x - c.clientWidth / 2); c.scrollTop = Math.max(0, MM.root.y - c.clientHeight / 2); }
+  else { c.scrollLeft = SX; c.scrollTop = SY; }
+  // glide to what was just opened, so the new level is in view
+  if (MM.focus) { const el = c.querySelector(`.mm-node[data-id="${MM.focus}"]`); MM.focus = null;
+    if (el) { const r = el.getBoundingClientRect(), cr = c.getBoundingClientRect(); const right = el.style.getPropertyValue('--dx').trim().startsWith('-');
+      const L = r.left - cr.left, R = r.right - cr.left; let dx = 0; const narrow = c.clientWidth < 640; const kids = el.getAttribute('aria-expanded') === 'true';
+      if (right) dx = narrow && kids ? R - 90 : R + 300 > c.clientWidth || L < 0 ? L - 40 : 0;
+      else dx = narrow && kids ? L - c.clientWidth + 90 : L - 300 < 0 || R > c.clientWidth ? R - c.clientWidth + 40 : 0;
+      const dy = r.top + r.height / 2 - cr.top - c.clientHeight / 2;
+      c.scrollTo({ left: c.scrollLeft + dx, top: c.scrollTop + dy, behavior: 'smooth' }); } }
+  c.addEventListener('scroll', () => { SX = c.scrollLeft; SY = c.scrollTop; }, { passive: true });
 }

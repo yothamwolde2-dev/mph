@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1, 18 November 2026
+
+* The MPH wordmark is back at the top of the sidebar, large, with its green square. The Mansen logo is gone.
+* Mind map, step by step like a work breakdown structure: it starts as one circle that says Mind map. Tap it and your branches appear, tap a branch and the items under it appear, tap an item and its own items appear, as deep as your projects go. Opening a branch closes its neighbours so the map stays tidy, the view glides to what you opened, and Open all and Close all are at the top.
+* Plan: the top priority star is now a green gradient mark.
+
 ## 1.0.0, 18 November 2026
 
 * A new look, Glass: frosted white panels on a soft blue grey field, rounded forms, sentence case headings in Montserrat, and a floating sidebar with the Mansen wordmark. The Black theme is still in Settings, Appearance.

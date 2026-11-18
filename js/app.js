@@ -1,14 +1,14 @@
 // MPH app: routing, rendering, actions, upload and the HTML reader.
-import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=1.0.0';
-import { MA, MC, mmAfter } from './mindmap.js?v=1.0.0';
-import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG, snapshot, listSnapshots, readSnapshot } from './store.js?v=1.0.0';
-import * as V from './views.js?v=1.0.0';
-import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=1.0.0';
-import { LA, LC, learningHub, langView, stopSpeech } from './lang.js?v=1.0.0';
-import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView, seriesView } from './book.js?v=1.0.0';
-import { warmContent } from './content.js?v=1.0.0';
-import { planView, PA, PC, taskMenu, addTaskMenu, reminderModal } from './plan.js?v=1.0.0';
-import { startNotify, pushOn, pushOff, pushTest, checkPush } from './notify.js?v=1.0.0';
+import { esc, icon, uid, today, locate, mkNode, kb, clone } from './core.js?v=1.0.1';
+import { MA, MC, mmAfter } from './mindmap.js?v=1.0.1';
+import { store, sb, onChange, mutate, touch, undo, redo, startSession, endSession, importPortfolio, uploadDoc, readDoc, readDocState, saveDocState, CONFIG, snapshot, listSnapshots, readSnapshot } from './store.js?v=1.0.1';
+import * as V from './views.js?v=1.0.1';
+import { R, RA, RC, mountReader, leaveReader, refresh as refreshReader, syncHl } from './reader.js?v=1.0.1';
+import { LA, LC, learningHub, langView, stopSpeech } from './lang.js?v=1.0.1';
+import { bookView, afterRender as bookAfter, BA, BC, bookUndo, libraryView, seriesView } from './book.js?v=1.0.1';
+import { warmContent } from './content.js?v=1.0.1';
+import { planView, PA, PC, taskMenu, addTaskMenu, reminderModal } from './plan.js?v=1.0.1';
+import { startNotify, pushOn, pushOff, pushTest, checkPush } from './notify.js?v=1.0.1';
 
 const $app = document.getElementById('app');
 const $layer = document.getElementById('layer');
